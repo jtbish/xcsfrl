@@ -2,14 +2,13 @@ from collections import OrderedDict
 
 from .covering import find_actions_to_cover, gen_covering_classifier
 from .deletion import deletion
+from .error import NoActionError
 from .ga import run_ga
 from .hyperparams import get_hyperparam as get_hp
 from .hyperparams import register_hyperparams
 from .param_update import update_action_set
+from .rng import seed_rng
 from .util import filter_null_prediction_arr_entries
-from .error import NoActionError
-
-TIME_STEP_MIN = 0
 
 
 class XCSF:
@@ -19,12 +18,13 @@ class XCSF:
         self._encoding = encoding
         self._action_selection_strat = action_selection_strat
         register_hyperparams(hyperparams_dict)
+        seed_rng(get_hp("seed"))
 
         self._pop = []
         self._prev_action_set = None
         self._prev_reward = None
         self._prev_obs = None
-        self._time_step = TIME_STEP_MIN
+        self._time_step = 0
 
     def run_episode(self):
         obs = self._env.reset()
@@ -98,7 +98,8 @@ class XCSF:
         return prediction_arr
 
     def _select_action(self, prediction_arr):
-        self._action_selection_strat(prediction_arr, self._env.action_space)
+        return self._action_selection_strat(prediction_arr,
+                                            self._env.action_space)
 
     def _gen_action_set(self, match_set, action):
         return [clfr for clfr in match_set if clfr.action == action]

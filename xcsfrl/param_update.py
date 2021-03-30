@@ -36,8 +36,10 @@ def _update_prediction(action_set, payoff, obs):
         clfr.cov_mat -= (1 / beta_rls) * np.linalg.multi_dot(
             (clfr.cov_mat, x.T, x, clfr.cov_mat))
         gain_vec = np.dot(clfr.cov_mat, x.T)
-        assert len(gain_vec) == len(x)
-        assert len(gain_vec) == len(clfr.weight_vec)
+        gain_vec = gain_vec.T
+        assert gain_vec.shape == x.shape
+        gain_vec = gain_vec.flatten()
+        assert gain_vec.shape == clfr.weight_vec.shape
 
         error = clfr.prediction(obs) - payoff
         for i in range(0, len(clfr.weight_vec)):

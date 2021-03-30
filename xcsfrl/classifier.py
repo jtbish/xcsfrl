@@ -2,15 +2,11 @@ import numpy as np
 
 from .hyperparams import get_hyperparam as get_hp
 from .util import augment_obs_vec
-from .xcsf import TIME_STEP_MIN
 
 _EXPERIENCE_MIN = 0
 _ACTION_SET_SIZE_MIN = 1
 _NUMEROSITY_MIN = 1
-TIME_STAMP_MIN = TIME_STEP_MIN
-_ERROR_MIN = 0.0
-_FITNESS_MIN = 0.0
-_FITNESS_MAX = 1.0
+_TIME_STAMP_MIN = 0
 _ATTR_EQ_REL_TOL = 1e-10
 
 
@@ -67,7 +63,6 @@ class Classifier:
 
     @error.setter
     def error(self, val):
-        assert val >= _ERROR_MIN
         self._error = val
 
     @property
@@ -76,7 +71,6 @@ class Classifier:
 
     @fitness.setter
     def fitness(self, val):
-        assert _FITNESS_MIN <= val <= _FITNESS_MAX
         self._fitness = val
 
     @property
@@ -94,7 +88,7 @@ class Classifier:
 
     @time_stamp.setter
     def time_stamp(self, val):
-        assert val >= TIME_STAMP_MIN
+        assert val >= _TIME_STAMP_MIN
         self._time_stamp = val
 
     @property
