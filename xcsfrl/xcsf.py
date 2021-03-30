@@ -7,6 +7,9 @@ from .hyperparams import get_hyperparam as get_hp
 from .hyperparams import register_hyperparams
 from .param_update import update_action_set
 from .util import filter_null_prediction_arr_entries
+from .error import NoActionError
+
+TIME_STEP_MIN = 0
 
 
 class XCSF:
@@ -21,7 +24,7 @@ class XCSF:
         self._prev_action_set = None
         self._prev_reward = None
         self._prev_obs = None
-        self._time_step = 0
+        self._time_step = TIME_STEP_MIN
 
     def run_episode(self):
         obs = self._env.reset()
@@ -30,7 +33,7 @@ class XCSF:
             obs = self._run_step(obs)
         return self._pop
 
-    def run_step(self, obs):
+    def _run_step(self, obs):
         match_set = self._gen_match_set(obs)
         prediction_arr = self._gen_prediction_arr(match_set, obs)
         action = self._select_action(prediction_arr)
@@ -99,3 +102,14 @@ class XCSF:
 
     def _gen_action_set(self, match_set, action):
         return [clfr for clfr in match_set if clfr.action == action]
+
+    def select_action(self, obs):
+        """Action selection for testing - always exploit"""
+        match_set = [clfr for clfr in self._pop if clfr.does_match(obs)]
+        if len(match_set) > 0:
+            prediction_arr = self._gen_prediction_arr(match_set, obs)
+            prediction_arr = filter_null_prediction_arr_entries(prediction_arr)
+            # greedy action selection
+            return max(prediction_arr, key=prediction_arr.get)
+        else:
+            raise NoActionError
