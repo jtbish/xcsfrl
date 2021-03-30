@@ -2,7 +2,11 @@ from collections import OrderedDict
 
 from .covering import find_actions_to_cover, gen_covering_classifier
 from .deletion import deletion
+from .ga import run_ga
+from .hyperparams import get_hyperparam as get_hp
 from .hyperparams import register_hyperparams
+from .param_update import update_action_set
+from .util import filter_null_prediction_arr_entries
 
 
 class XCSF:
@@ -19,8 +23,41 @@ class XCSF:
         self._prev_obs = None
         self._time_step = 0
 
-    def run_episode():
-        pass
+    def run_episode(self):
+        obs = self._env.reset()
+        # feed run step obss until it gets to terminal state
+        while not self._env.is_terminal():
+            obs = self._run_step(obs)
+        return self._pop
+
+    def run_step(self, obs):
+        match_set = self._gen_match_set(obs)
+        prediction_arr = self._gen_prediction_arr(match_set, obs)
+        action = self._select_action(prediction_arr)
+        action_set = self._gen_action_set(match_set, action)
+        (next_obs, reward, is_terminal) = self._env.step(action)
+        if self._prev_action_set is not None:
+            assert self._prev_reward is not None
+            assert self._prev_obs is not None
+            prediction_arr = filter_null_prediction_arr_entries(prediction_arr)
+            payoff = self._prev_reward + get_hp("gamma") * \
+                max(prediction_arr.values())
+            update_action_set(self._prev_action_set, payoff, self._prev_obs,
+                              self._pop)
+            run_ga(self._prev_action_set, self._pop, self._time_step,
+                   self._encoding, self._env.action_space)
+        if is_terminal:
+            payoff = reward
+            update_action_set(action_set, payoff, obs, self._pop)
+            run_ga(action_set, self._pop, self._time_step, self._encoding,
+                   self._env.action_space)
+            self._prev_action_set = None
+        else:
+            self._prev_action_set = action_set
+            self._prev_reward = reward
+            self._prev_obs = obs
+        self._time_step += 1
+        return next_obs
 
     def _gen_match_set(self, obs):
         match_set = [clfr for clfr in self._pop if clfr.does_match(obs)]
@@ -40,10 +77,11 @@ class XCSF:
              for action in self._env.action_space})
         actions_reprd_in_m = set([clfr.action for clfr in match_set])
         for a in actions_reprd_in_m:
-            prediction_arr[a] = 0.0
+            # to bootstap sum below
+            prediction_arr[a] = 0
 
         fitness_sum_arr = OrderedDict(
-            {action: 0.0
+            {action: 0
              for action in self._env.action_space})
 
         for clfr in match_set:
@@ -52,9 +90,12 @@ class XCSF:
             fitness_sum_arr[a] += clfr.fitness
 
         for a in self._env.action_space:
-            if fitness_sum_arr[a] != 0.0:
+            if fitness_sum_arr[a] != 0:
                 prediction_arr[a] /= fitness_sum_arr[a]
         return prediction_arr
 
     def _select_action(self, prediction_arr):
         self._action_selection_strat(prediction_arr, self._env.action_space)
+
+    def _gen_action_set(self, match_set, action):
+        return [clfr for clfr in match_set if clfr.action == action]

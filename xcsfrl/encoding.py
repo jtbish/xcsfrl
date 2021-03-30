@@ -3,10 +3,10 @@ import abc
 import numpy as np
 from rlenvs.obs_space import IntegerObsSpace, RealObsSpace
 
+from .condition import Condition
 from .hyperparams import get_hyperparam as get_hp
 from .interval import Interval
 from .rng import get_rng
-from .condition import Condition
 
 _GENERALITY_LB_EXCL = 0.0
 _GENERALITY_UB_INCL = 1.0
@@ -75,7 +75,7 @@ class UnorderedBoundEncodingABC(EncodingABC, metaclass=abc.ABCMeta):
         mut_alleles = []
         for (allele_pair, dim) in zip(allele_pairs, self._obs_space):
             for allele in allele_pair:
-                if get_rng().random() < get_hp("p_mut"):
+                if get_rng().random() < get_hp("mu"):
                     noise = self._gen_mutation_noise(dim)
                     sign = get_rng().choice([-1, 1])
                     mut_allele = allele + sign * noise
@@ -98,9 +98,9 @@ class IntegerUnorderedBoundEncoding(UnorderedBoundEncodingABC):
 
     def _gen_covering_alleles(self, obs_compt, dim):
         r_nought = get_hp("r_nought")
-        # rand integer ~ (0, r_nought)
-        lower = obs_compt - get_rng().randint(low=1, high=r_nought)
-        upper = obs_compt + get_rng().randint(low=1, high=r_nought)
+        # rand integer ~ [0, r_nought]
+        lower = obs_compt - get_rng().randint(low=0, high=(r_nought + 1))
+        upper = obs_compt + get_rng().randint(low=0, high=(r_nought + 1))
         lower = max(lower, dim.lower)
         upper = min(upper, dim.upper)
         return (lower, upper)
@@ -142,5 +142,5 @@ class RealUnorderedBoundEncoding(UnorderedBoundEncodingABC):
         dim_span = (dim.upper - dim.lower)
         m_nought = get_hp("m_nought")
         assert 0.0 < m_nought <= 1.0
-        mut_high = m_nought*dim_span
+        mut_high = m_nought * dim_span
         return get_rng().uniform(low=0, high=mut_high)
