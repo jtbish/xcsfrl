@@ -10,6 +10,7 @@ _MAX_ACC = 1.0
 def update_action_set(action_set, payoff, obs, pop):
     _update_experience(action_set)
     _update_prediction(action_set, payoff, obs)
+    _update_niche_min_error(action_set)
     _update_error(action_set, payoff, obs)
     _update_action_set_size(action_set)
     _update_fitness(action_set)
@@ -46,14 +47,26 @@ def _update_prediction(action_set, payoff, obs):
             clfr.weight_vec[i] += gain_vec[i] * error
 
 
+def _update_niche_min_error(action_set):
+    min_error_as = min([clfr.error for clfr in action_set])
+    for clfr in action_set:
+        min_error_diff = (min_error_as - clfr.niche_min_error)
+        clfr.niche_min_error += (get_hp("beta_epsilon") * min_error_diff)
+
+
 def _update_error(action_set, payoff, obs):
     beta = get_hp("beta")
     for clfr in action_set:
-        payoff_diff = (abs(payoff - clfr.prediction(obs)) - clfr.error)
-        if clfr.experience < (1 / beta):
-            clfr.error += (payoff_diff / clfr.experience)
+        payoff_diff = abs(payoff - clfr.prediction(obs))
+        if (payoff_diff - clfr.niche_min_error) >= 0:
+            error_target = (payoff_diff - clfr.niche_min_error - clfr.error)
         else:
-            clfr.error += (beta * payoff_diff)
+            error_target = (get_hp("epsilon_nought") - clfr.error)
+
+        if clfr.experience < (1 / beta):
+            clfr.error += (error_target / clfr.experience)
+        else:
+            clfr.error += (beta * error_target)
 
 
 def _update_action_set_size(action_set):

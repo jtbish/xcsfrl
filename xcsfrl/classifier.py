@@ -18,6 +18,7 @@ class Classifier:
         self._num_features = len(condition)
         self._weight_vec = self._init_weight_vec(self._num_features)
         self._cov_mat = self._init_cov_mat(self._num_features)
+        self._niche_min_error = get_hp("mu_I")
         self._error = get_hp("epsilon_I")
         self._fitness = get_hp("fitness_I")
         self._experience = 0
@@ -56,6 +57,14 @@ class Classifier:
     @cov_mat.setter
     def cov_mat(self, val):
         self._cov_mat = val
+
+    @property
+    def niche_min_error(self):
+        return self._niche_min_error
+
+    @niche_min_error.setter
+    def niche_min_error(self, val):
+        self._niche_min_error = val
 
     @property
     def error(self):
