@@ -41,7 +41,7 @@ def _update_prediction(action_set, payoff, obs):
         gain_vec = gain_vec.flatten()
         assert gain_vec.shape == clfr.weight_vec.shape
 
-        error = clfr.prediction(obs) - payoff
+        error = payoff - clfr.prediction(obs)
         for i in range(0, len(clfr.weight_vec)):
             clfr.weight_vec[i] += gain_vec[i] * error
 
