@@ -126,7 +126,17 @@ class RealUnorderedBoundEncoding(UnorderedBoundEncodingABC):
         super().__init__(obs_space)
 
     def _gen_covering_alleles(self, obs_compt, dim):
-        raise NotImplementedError
+        # r_0 interpreted as fraction of dim span to draw uniform random noise
+        # from
+        dim_span = (dim.upper - dim.lower)
+        r_nought = get_hp("r_nought")
+        assert 0.0 < r_nought <= 1.0
+        mut_high = r_nought * dim_span
+        lower = obs_compt - get_rng().uniform(low=0, high=mut_high)
+        upper = obs_compt + get_rng().uniform(low=0, high=mut_high)
+        lower = max(lower, dim.lower)
+        upper = min(upper, dim.upper)
+        return (lower, upper)
 
     def calc_condition_generality(self, cond_intervals):
         numer = sum([(interval.upper - interval.lower)
