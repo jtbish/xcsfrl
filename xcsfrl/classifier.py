@@ -1,6 +1,7 @@
 import numpy as np
 
 from .hyperparams import get_hyperparam as get_hp
+from .rng import get_rng
 from .util import augment_obs_vec
 
 _EXPERIENCE_MIN = 0
@@ -120,7 +121,10 @@ class Classifier:
 
     def _init_weight_vec(self, num_features):
         # linear prediction requires n+1 weights, n = num features
-        return np.zeros(shape=(num_features + 1), dtype=np.float32)
+        low = get_hp("weight_I_min")
+        high = get_hp("weight_I_max")
+        assert low <= high
+        return get_rng().uniform(low, high, size=(num_features+1))
 
     def _init_cov_mat(self, num_features):
         # cov mat is shape (n+1)x(n+1), n = num features

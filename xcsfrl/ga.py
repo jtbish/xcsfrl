@@ -6,7 +6,7 @@ from .deletion import deletion
 from .hyperparams import get_hyperparam as get_hp
 from .rng import get_rng
 from .subsumption import does_subsume
-from .util import calc_num_micros
+from .util import calc_num_micros, calc_num_macros
 
 
 def run_ga(action_set, pop, time_step, encoding, action_space):
@@ -59,7 +59,7 @@ def _tournament_selection(action_set):
     def _select_random(action_set):
         return get_rng().choice(action_set)
 
-    as_size = calc_num_micros(action_set)
+    as_size = calc_num_macros(action_set)
     tourn_size = math.ceil(get_hp("tau") * as_size)
     assert 1 <= tourn_size <= as_size
 

@@ -10,8 +10,10 @@ _MAX_ACC = 1.0
 def update_action_set(action_set, payoff, obs, pop):
     _update_experience(action_set)
     _update_prediction(action_set, payoff, obs)
-    _update_niche_min_error(action_set)
-    _update_error(action_set, payoff, obs)
+    use_niche_min_error = (get_hp("beta_epsilon") != 0)
+    if use_niche_min_error:
+        _update_niche_min_error(action_set)
+    _update_error(action_set, payoff, obs, use_niche_min_error)
     _update_action_set_size(action_set)
     _update_fitness(action_set)
     if get_hp("do_as_subsumption"):
@@ -28,10 +30,13 @@ def _update_prediction(action_set, payoff, obs):
     x = augment_obs_vec(obs)
     x = np.reshape(x, (1, len(x)))  # (1, n+1) row vector, n = num features
 
+    tau_rls = get_hp("tau_rls")
+    cov_mat_resets_allowed = (tau_rls > 0)
     for clfr in action_set:
-        should_reset_cov_mat = (clfr.experience % get_hp("tau_rls") == 0)
-        if should_reset_cov_mat:
-            clfr.reset_cov_mat()
+        if cov_mat_resets_allowed:
+            should_reset_cov_mat = (clfr.experience % tau_rls == 0)
+            if should_reset_cov_mat:
+                clfr.reset_cov_mat()
 
         beta_rls = 1 + np.linalg.multi_dot((x, clfr.cov_mat, x.T))
         clfr.cov_mat -= (1 / beta_rls) * np.linalg.multi_dot(
@@ -54,14 +59,18 @@ def _update_niche_min_error(action_set):
         clfr.niche_min_error += (get_hp("beta_epsilon") * min_error_diff)
 
 
-def _update_error(action_set, payoff, obs):
+def _update_error(action_set, payoff, obs, use_niche_min_error):
     beta = get_hp("beta")
     for clfr in action_set:
         payoff_diff = abs(payoff - clfr.prediction(obs))
-        if (payoff_diff - clfr.niche_min_error) >= 0:
-            error_target = (payoff_diff - clfr.niche_min_error - clfr.error)
+        if use_niche_min_error:
+            if (payoff_diff - clfr.niche_min_error) >= 0:
+                error_target = (payoff_diff - clfr.niche_min_error -
+                                clfr.error)
+            else:
+                error_target = (get_hp("epsilon_nought") - clfr.error)
         else:
-            error_target = (get_hp("epsilon_nought") - clfr.error)
+            error_target = (payoff_diff - clfr.error)
 
         if clfr.experience < (1 / beta):
             clfr.error += (error_target / clfr.experience)

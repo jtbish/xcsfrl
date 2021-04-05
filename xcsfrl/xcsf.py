@@ -1,4 +1,5 @@
 from collections import OrderedDict
+import logging
 
 from .covering import find_actions_to_cover, gen_covering_classifier
 from .deletion import deletion
@@ -28,9 +29,14 @@ class XCSF:
 
     def run_episode(self):
         obs = self._env.reset()
+        logging.debug(f"Initial obs: {obs}")
         # feed run step obss until it gets to terminal state
+        num_steps = 0
         while not self._env.is_terminal():
             obs = self._run_step(obs)
+            num_steps += 1
+        logging.debug(f"Terminal obs: {obs}")
+        logging.debug(f"Num time steps: {num_steps}")
         return self._pop
 
     def _run_step(self, obs):
@@ -114,3 +120,8 @@ class XCSF:
             return max(prediction_arr, key=prediction_arr.get)
         else:
             raise NoActionError
+
+    def gen_prediction_arr(self, obs):
+        """Q-value calculation for outside probing."""
+        match_set = [clfr for clfr in self._pop if clfr.does_match(obs)]
+        return self._gen_prediction_arr(match_set, obs)
