@@ -1,5 +1,5 @@
-from collections import OrderedDict
 import logging
+from collections import OrderedDict
 
 from .covering import find_actions_to_cover, gen_covering_classifier
 from .deletion import deletion
@@ -27,16 +27,21 @@ class XCSF:
         self._prev_obs = None
         self._time_step = 0
 
-    def run_episode(self):
-        obs = self._env.reset()
-        logging.debug(f"Initial obs: {obs}")
-        # feed run step obss until it gets to terminal state
-        num_steps = 0
-        while not self._env.is_terminal():
+    def train(self, num_steps):
+        # restart episode or resume where left off
+        if self._env.is_terminal():
+            obs = self._env.reset()
+        else:
+            assert self._prev_obs is not None
+            obs = self._prev_obs
+
+        steps_done = 0
+        while steps_done < num_steps:
             obs = self._run_step(obs)
-            num_steps += 1
-        logging.debug(f"Terminal obs: {obs}")
-        logging.debug(f"Num time steps: {num_steps}")
+            if self._env.is_terminal():
+                obs = self._env.reset()
+            steps_done += 1
+
         return self._pop
 
     def _run_step(self, obs):
@@ -104,8 +109,7 @@ class XCSF:
         return prediction_arr
 
     def _select_action(self, prediction_arr):
-        return self._action_selection_strat(prediction_arr,
-                                            self._env.action_space)
+        return self._action_selection_strat(prediction_arr, self._time_step)
 
     def _gen_action_set(self, match_set, action):
         return [clfr for clfr in match_set if clfr.action == action]
