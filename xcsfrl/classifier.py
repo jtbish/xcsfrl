@@ -134,9 +134,8 @@ class Classifier:
     def does_match(self, obs):
         return self._condition.does_match(obs)
 
-    def prediction(self, obs):
-        augmented_obs_vec = augment_obs_vec(obs)
-        return np.dot(augmented_obs_vec, self._weight_vec)
+    def prediction(self, aug_obs):
+        return np.dot(aug_obs, self._weight_vec)
 
     def reset_cov_mat(self):
         self._cov_mat = self._init_cov_mat(self._num_features)

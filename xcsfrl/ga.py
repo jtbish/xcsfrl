@@ -57,7 +57,8 @@ def _run_ga(action_set, pop, time_step, encoding, action_space):
 
 def _tournament_selection(action_set):
     def _select_random(action_set):
-        return get_rng().choice(action_set)
+        idx = get_rng().randint(0, len(action_set))
+        return action_set[idx]
 
     as_size = calc_num_macros(action_set)
     tourn_size = math.ceil(get_hp("tau") * as_size)

@@ -9,11 +9,12 @@ _MAX_ACC = 1.0
 
 def update_action_set(action_set, payoff, obs, pop):
     _update_experience(action_set)
-    _update_prediction(action_set, payoff, obs)
+    aug_obs = augment_obs_vec(obs)
+    _update_prediction(action_set, payoff, aug_obs)
     use_niche_min_error = (get_hp("beta_epsilon") != 0)
     if use_niche_min_error:
         _update_niche_min_error(action_set)
-    _update_error(action_set, payoff, obs, use_niche_min_error)
+    _update_error(action_set, payoff, aug_obs, use_niche_min_error)
     _update_action_set_size(action_set)
     _update_fitness(action_set)
     if get_hp("do_as_subsumption"):
@@ -25,10 +26,10 @@ def _update_experience(action_set):
         clfr.experience += 1
 
 
-def _update_prediction(action_set, payoff, obs):
+def _update_prediction(action_set, payoff, aug_obs):
     """RLS prediction update."""
-    x = augment_obs_vec(obs)
-    x = np.reshape(x, (1, len(x)))  # (1, n+1) row vector, n = num features
+    x = np.reshape(aug_obs,
+                   (1, len(aug_obs)))  # (1, n+1) row vector, n = num features
 
     tau_rls = get_hp("tau_rls")
     cov_mat_resets_allowed = (tau_rls > 0)
@@ -38,18 +39,17 @@ def _update_prediction(action_set, payoff, obs):
             if should_reset_cov_mat:
                 clfr.reset_cov_mat()
 
-        beta_rls = 1 + np.linalg.multi_dot((x, clfr.cov_mat, x.T))
-        clfr.cov_mat -= (1 / beta_rls) * np.linalg.multi_dot(
-            (clfr.cov_mat, x.T, x, clfr.cov_mat))
+        beta_rls = 1 + (x @ clfr.cov_mat @ x.T)
+        clfr.cov_mat -= (1 /
+                         beta_rls) * (clfr.cov_mat @ x.T @ x @ clfr.cov_mat)
         gain_vec = np.dot(clfr.cov_mat, x.T)
         gain_vec = gain_vec.T
         assert gain_vec.shape == x.shape
-        gain_vec = gain_vec.flatten()
+        gain_vec = gain_vec[0]
         assert gain_vec.shape == clfr.weight_vec.shape
 
-        error = payoff - clfr.prediction(obs)
-        for i in range(0, len(clfr.weight_vec)):
-            clfr.weight_vec[i] += gain_vec[i] * error
+        error = payoff - clfr.prediction(aug_obs)
+        clfr.weight_vec += (gain_vec * error)
 
 
 def _update_niche_min_error(action_set):
@@ -59,10 +59,10 @@ def _update_niche_min_error(action_set):
         clfr.niche_min_error += (get_hp("beta_epsilon") * min_error_diff)
 
 
-def _update_error(action_set, payoff, obs, use_niche_min_error):
+def _update_error(action_set, payoff, aug_obs, use_niche_min_error):
     beta = get_hp("beta")
     for clfr in action_set:
-        payoff_diff = abs(payoff - clfr.prediction(obs))
+        payoff_diff = abs(payoff - clfr.prediction(aug_obs))
         if use_niche_min_error:
             if (payoff_diff - clfr.niche_min_error) >= 0:
                 error_target = (payoff_diff - clfr.niche_min_error -

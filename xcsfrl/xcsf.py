@@ -9,7 +9,7 @@ from .hyperparams import get_hyperparam as get_hp
 from .hyperparams import register_hyperparams
 from .param_update import update_action_set
 from .rng import seed_rng
-from .util import filter_null_prediction_arr_entries
+from .util import augment_obs_vec, filter_null_prediction_arr_entries
 
 
 class XCSF:
@@ -86,6 +86,8 @@ class XCSF:
         return match_set
 
     def _gen_prediction_arr(self, match_set, obs):
+        aug_obs = augment_obs_vec(obs)
+
         prediction_arr = OrderedDict(
             {action: None
              for action in self._env.action_space})
@@ -100,7 +102,7 @@ class XCSF:
 
         for clfr in match_set:
             a = clfr.action
-            prediction_arr[a] += clfr.prediction(obs) * clfr.fitness
+            prediction_arr[a] += clfr.prediction(aug_obs) * clfr.fitness
             fitness_sum_arr[a] += clfr.fitness
 
         for a in self._env.action_space:
