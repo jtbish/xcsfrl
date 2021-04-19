@@ -2,7 +2,6 @@ import numpy as np
 
 from .hyperparams import get_hyperparam as get_hp
 from .rng import get_rng
-from .util import augment_obs_vec
 
 _EXPERIENCE_MIN = 0
 _ACTION_SET_SIZE_MIN = 1
