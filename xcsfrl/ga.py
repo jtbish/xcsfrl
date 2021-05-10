@@ -6,19 +6,22 @@ from .deletion import deletion
 from .hyperparams import get_hyperparam as get_hp
 from .rng import get_rng
 from .subsumption import does_subsume
-from .util import calc_num_micros, calc_num_macros
+from .util import calc_num_macros, calc_num_micros
 
 
-def run_ga(action_set, pop, time_step, encoding, action_space):
+def run_ga(action_set, pop, pop_ops_history, time_step, encoding,
+           action_space):
     avg_time_stamp_in_as = sum(
         [clfr.time_stamp * clfr.numerosity
          for clfr in action_set]) / calc_num_micros(action_set)
     should_apply_ga = ((time_step - avg_time_stamp_in_as) > get_hp("theta_ga"))
     if should_apply_ga:
-        _run_ga(action_set, pop, time_step, encoding, action_space)
+        _run_ga(action_set, pop, pop_ops_history, time_step, encoding,
+                action_space)
 
 
-def _run_ga(action_set, pop, time_step, encoding, action_space):
+def _run_ga(action_set, pop, pop_ops_history, time_step, encoding,
+            action_space):
     for clfr in action_set:
         clfr.time_stamp = time_step
 
@@ -46,13 +49,15 @@ def _run_ga(action_set, pop, time_step, encoding, action_space):
         if get_hp("do_ga_subsumption"):
             if does_subsume(parent_a, child):
                 parent_a.numerosity += 1
+                pop_ops_history["ga_subsumption"] += 1
             elif does_subsume(parent_b, child):
                 parent_b.numerosity += 1
+                pop_ops_history["ga_subsumption"] += 1
             else:
-                _insert_in_pop(pop, child)
+                _insert_in_pop(pop, pop_ops_history, child)
         else:
-            _insert_in_pop(pop, child)
-        deletion(pop)
+            _insert_in_pop(pop, pop_ops_history, child)
+        deletion(pop, pop_ops_history)
 
 
 def _tournament_selection(action_set):
@@ -120,9 +125,11 @@ def _mutate_action(child, action_space):
         child.action = mut_action
 
 
-def _insert_in_pop(pop, child):
+def _insert_in_pop(pop, pop_ops_history, child):
     for clfr in pop:
         if (clfr.condition == child.condition and clfr.action == child.action):
             clfr.numerosity += 1
+            pop_ops_history["absorption"] += 1
             return
     pop.append(child)
+    pop_ops_history["insertion"] += 1

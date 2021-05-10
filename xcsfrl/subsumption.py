@@ -2,7 +2,7 @@ from .hyperparams import get_hyperparam as get_hp
 import copy
 
 
-def action_set_subsumption(action_set, pop):
+def action_set_subsumption(action_set, pop, pop_ops_history):
     # find most general clfr in [A]
     most_general_clfr = None
     for clfr in action_set:
@@ -17,7 +17,9 @@ def action_set_subsumption(action_set, pop):
         # loop
         for clfr in copy.deepcopy(action_set):
             if most_general_clfr.is_more_general(clfr):
-                most_general_clfr.numerosity += clfr.numerosity
+                num_micros_subsumed = clfr.numerosity
+                most_general_clfr.numerosity += num_micros_subsumed
+                pop_ops_history["as_subsumption"] += num_micros_subsumed
                 action_set.remove(clfr)
                 pop.remove(clfr)
 

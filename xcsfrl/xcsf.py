@@ -9,23 +9,40 @@ from .hyperparams import get_hyperparam as get_hp
 from .hyperparams import register_hyperparams
 from .param_update import update_action_set
 from .rng import seed_rng
-from .util import augment_obs_vec, filter_null_prediction_arr_entries
+from .util import filter_null_prediction_arr_entries
 
 
 class XCSF:
-    def __init__(self, env, encoding, action_selection_strat,
+    def __init__(self, env, encoding, action_selection_strat, pred_strat,
                  hyperparams_dict):
         self._env = env
         self._encoding = encoding
         self._action_selection_strat = action_selection_strat
+        self._pred_strat = pred_strat
         register_hyperparams(hyperparams_dict)
         seed_rng(get_hp("seed"))
 
         self._pop = []
+        self._pop_ops_history = {
+            "covering": 0,
+            "absorption": 0,
+            "insertion": 0,
+            "deletion": 0,
+            "ga_subsumption": 0,
+            "as_subsumption": 0
+        }
         self._prev_action_set = None
         self._prev_reward = None
         self._prev_obs = None
         self._time_step = 0
+
+    @property
+    def pop(self):
+        return self._pop
+
+    @property
+    def pop_ops_history(self):
+        return self._pop_ops_history
 
     def train(self, num_steps):
         # restart episode or resume where left off
@@ -42,8 +59,6 @@ class XCSF:
                 obs = self._env.reset()
             steps_done += 1
 
-        return self._pop
-
     def _run_step(self, obs):
         match_set = self._gen_match_set(obs)
         prediction_arr = self._gen_prediction_arr(match_set, obs)
@@ -57,14 +72,16 @@ class XCSF:
             payoff = self._prev_reward + get_hp("gamma") * \
                 max(prediction_arr.values())
             update_action_set(self._prev_action_set, payoff, self._prev_obs,
-                              self._pop)
-            run_ga(self._prev_action_set, self._pop, self._time_step,
-                   self._encoding, self._env.action_space)
+                              self._pop, self._pop_ops_history,
+                              self._pred_strat)
+            run_ga(self._prev_action_set, self._pop, self._pop_ops_history,
+                   self._time_step, self._encoding, self._env.action_space)
         if is_terminal:
             payoff = reward
-            update_action_set(action_set, payoff, obs, self._pop)
-            run_ga(action_set, self._pop, self._time_step, self._encoding,
-                   self._env.action_space)
+            update_action_set(action_set, payoff, obs, self._pop,
+                              self._pop_ops_history, self._pred_strat)
+            run_ga(action_set, self._pop, self._pop_ops_history,
+                   self._time_step, self._encoding, self._env.action_space)
             self._prev_action_set = None
         else:
             self._prev_action_set = action_set
@@ -79,14 +96,15 @@ class XCSF:
                                                  self._env.action_space)
         for action in actions_to_cover:
             clfr = gen_covering_classifier(obs, self._encoding, action,
-                                           self._time_step)
+                                           self._time_step, self._pred_strat)
             self._pop.append(clfr)
-            deletion(self._pop)
+            self._pop_ops_history["covering"] += 1
+            deletion(self._pop, self._pop_ops_history)
             match_set.append(clfr)
         return match_set
 
     def _gen_prediction_arr(self, match_set, obs):
-        aug_obs = augment_obs_vec(obs)
+        aug_obs = self._pred_strat.aug_obs(obs)
 
         prediction_arr = OrderedDict(
             {action: None

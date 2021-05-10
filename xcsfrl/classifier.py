@@ -10,7 +10,7 @@ _TIME_STAMP_MIN = 0
 _ATTR_EQ_REL_TOL = 1e-10
 
 
-class Classifier:
+class PolyPredClassifierBase:
     def __init__(self, condition, action, time_step):
         """Only used by covering."""
         self._condition = condition
@@ -119,31 +119,33 @@ class Classifier:
         self._numerosity = val
 
     def _init_weight_vec(self, num_features):
-        # linear prediction requires n+1 weights, n = num features
+        # weight vec is of len k*n+1, k = order, n = num features
         low = get_hp("weight_I_min")
         high = get_hp("weight_I_max")
         assert low <= high
-        return get_rng().uniform(low, high, size=(num_features+1))
+        return get_rng().uniform(low,
+                                 high,
+                                 size=(self._POLY_ORDER * num_features + 1))
 
     def _init_cov_mat(self, num_features):
-        # cov mat is shape (n+1)x(n+1), n = num features
-        return np.identity(n=(num_features + 1),
+        # cov mat is of shape (k*n+1)x(k*n+1), k = order, n = num features
+        return np.identity(n=(self._POLY_ORDER*num_features + 1),
                            dtype=np.float32) * get_hp("delta_rls")
 
     def does_match(self, obs):
         return self._condition.does_match(obs)
-
-    def prediction(self, aug_obs):
-        return np.dot(aug_obs, self._weight_vec)
-
-    def reset_cov_mat(self):
-        self._cov_mat = self._init_cov_mat(self._num_features)
 
     def is_more_general(self, other):
         my_generality = self._condition.calc_generality()
         other_generality = other._condition.calc_generality()
         return ((my_generality > other_generality)
                 and self._condition.does_subsume(other._condition))
+
+    def prediction(self, aug_obs):
+        return np.dot(aug_obs, self._weight_vec)
+
+    def reset_cov_mat(self):
+        self._cov_mat = self._init_cov_mat(self._num_features)
 
     def __eq__(self, other):
         return (self._condition == other._condition
@@ -169,3 +171,11 @@ class Classifier:
     def _cov_mat_is_close(self, other):
         return np.all(
             np.isclose(self._cov_mat, other._cov_mat, rtol=_ATTR_EQ_REL_TOL))
+
+
+class LinearPredClassifier(PolyPredClassifierBase):
+    _POLY_ORDER = 1
+
+
+class QuadraticPredClassifier(PolyPredClassifierBase):
+    _POLY_ORDER = 2

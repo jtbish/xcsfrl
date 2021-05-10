@@ -2,14 +2,15 @@ import numpy as np
 
 from .hyperparams import get_hyperparam as get_hp
 from .subsumption import action_set_subsumption
-from .util import augment_obs_vec, calc_num_micros
+from .util import calc_num_micros
 
 _MAX_ACC = 1.0
 
 
-def update_action_set(action_set, payoff, obs, pop):
+def update_action_set(action_set, payoff, obs, pop, pop_ops_history,
+                      pred_strat):
     _update_experience(action_set)
-    aug_obs = augment_obs_vec(obs)
+    aug_obs = pred_strat.aug_obs(obs)
     _update_prediction(action_set, payoff, aug_obs)
     use_niche_min_error = (get_hp("beta_epsilon") != 0)
     if use_niche_min_error:
@@ -18,7 +19,7 @@ def update_action_set(action_set, payoff, obs, pop):
     _update_action_set_size(action_set)
     _update_fitness(action_set)
     if get_hp("do_as_subsumption"):
-        action_set_subsumption(action_set, pop)
+        action_set_subsumption(action_set, pop, pop_ops_history)
 
 
 def _update_experience(action_set):
@@ -28,8 +29,7 @@ def _update_experience(action_set):
 
 def _update_prediction(action_set, payoff, aug_obs):
     """RLS prediction update."""
-    x = np.reshape(aug_obs,
-                   (1, len(aug_obs)))  # (1, n+1) row vector, n = num features
+    x = np.reshape(aug_obs, (1, len(aug_obs)))  # row vector
 
     tau_rls = get_hp("tau_rls")
     cov_mat_resets_allowed = (tau_rls > 0)

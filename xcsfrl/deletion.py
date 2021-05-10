@@ -5,12 +5,13 @@ from .util import calc_num_macros, calc_num_micros
 _MIN_NUM_MACROS = 1
 
 
-def deletion(pop):
+def deletion(pop, pop_ops_history):
     max_pop_size = get_hp("N")
     pop_size = calc_num_micros(pop)
     num_to_delete = max(0, (pop_size - max_pop_size))
     for _ in range(num_to_delete):
         _delete_single_microclfr(pop)
+    pop_ops_history["deletion"] += num_to_delete
     assert calc_num_macros(pop) >= _MIN_NUM_MACROS
     assert calc_num_micros(pop) <= max_pop_size
 
