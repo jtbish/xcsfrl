@@ -8,6 +8,9 @@ from .rng import get_rng
 from .subsumption import does_subsume
 from .util import calc_num_macros, calc_num_micros
 
+_ERROR_CUTDOWN = 0.25
+_FITNESS_CUTDOWN = 0.1
+
 
 def run_ga(action_set, pop, pop_ops_history, time_step, encoding,
            action_space):
@@ -36,13 +39,34 @@ def _run_ga(action_set, pop, pop_ops_history, time_step, encoding,
 
     do_crossover = get_rng().random() < get_hp("chi")
     if do_crossover:
-        _two_point_crossover(child_a, child_b, encoding)
-        child_error = 0.25 * (parent_a.error + parent_b.error) / 2
-        child_fitness = 0.1 * (parent_a.fitness + parent_b.fitness) / 2
+        _uniform_crossover(child_a, child_b, encoding)
+
+        # weight vecs and cov mats set as fitness weighted avg of parent ones
+        f_a = parent_a.fitness
+        f_b = parent_b.fitness
+        child_weight_vec = (f_a * parent_a.weight_vec +
+                            f_b * parent_b.weight_vec) / (f_a + f_b)
+        child_a.weight_vec = child_weight_vec
+        child_b.weight_vec = child_weight_vec
+
+        child_cov_mat = (f_a * parent_a.cov_mat + f_b * parent_b.cov_mat) / \
+                        (f_a + f_b)
+        child_a.cov_mat = child_cov_mat
+        child_b.cov_mat = child_cov_mat
+
+        child_error = _ERROR_CUTDOWN * (parent_a.error + parent_b.error) / 2
         child_a.error = child_error
         child_b.error = child_error
+
+        child_fitness = _FITNESS_CUTDOWN * (parent_a.fitness +
+                                            parent_b.fitness) / 2
         child_a.fitness = child_fitness
         child_b.fitness = child_fitness
+
+        child_niche_min_error = _ERROR_CUTDOWN * (parent_a.niche_min_error +
+                                                  parent_b.niche_min_error) / 2
+        child_a.niche_min_error = child_niche_min_error
+        child_b.niche_min_error = child_niche_min_error
 
     for child in (child_a, child_b):
         _mutation(child, encoding, action_space)
@@ -89,9 +113,6 @@ def _two_point_crossover(child_a, child_b, encoding):
     cut_start_idx = min(first, second)
     cut_end_idx = max(first, second)
 
-    def _swap(seq_a, seq_b, idx):
-        seq_a[idx], seq_b[idx] = seq_b[idx], seq_a[idx]
-
     for idx in range(cut_start_idx, cut_end_idx):
         _swap(a_cond_alleles, b_cond_alleles, idx)
 
@@ -101,6 +122,28 @@ def _two_point_crossover(child_a, child_b, encoding):
     b_new_cond = Condition(b_cond_alleles, encoding)
     child_a.condition = a_new_cond
     child_b.condition = b_new_cond
+
+
+def _uniform_crossover(child_a, child_b, encoding):
+    a_cond_alleles = copy.deepcopy(child_a.condition.alleles)
+    b_cond_alleles = copy.deepcopy(child_b.condition.alleles)
+    assert len(a_cond_alleles) == len(b_cond_alleles)
+    n = len(a_cond_alleles)
+
+    for idx in range(0, n):
+        if get_rng().random() < get_hp("upsilon"):
+            _swap(a_cond_alleles, b_cond_alleles, idx)
+
+    # make and set new Condition objs so phenotypes are properly pre-calced
+    # and cached
+    a_new_cond = Condition(a_cond_alleles, encoding)
+    b_new_cond = Condition(b_cond_alleles, encoding)
+    child_a.condition = a_new_cond
+    child_b.condition = b_new_cond
+
+
+def _swap(seq_a, seq_b, idx):
+    seq_a[idx], seq_b[idx] = seq_b[idx], seq_a[idx]
 
 
 def _mutation(child, encoding, action_space):
