@@ -8,7 +8,6 @@ from .hyperparams import get_hyperparam as get_hp
 from .interval import Interval
 from .rng import get_rng
 
-_GENERALITY_LB_EXCL = 0.0
 _GENERALITY_UB_INCL = 1.0
 
 
@@ -92,6 +91,8 @@ class UnorderedBoundEncodingABC(EncodingABC, metaclass=abc.ABCMeta):
 
 
 class IntegerUnorderedBoundEncoding(UnorderedBoundEncodingABC):
+    _GENERALITY_LB_EXCL = 0
+
     def __init__(self, obs_space):
         assert isinstance(obs_space, IntegerObsSpace)
         super().__init__(obs_space)
@@ -112,7 +113,8 @@ class IntegerUnorderedBoundEncoding(UnorderedBoundEncodingABC):
                      for interval in cond_intervals])
         denom = sum([(dim.upper - dim.lower + 1) for dim in self._obs_space])
         generality = numer / denom
-        assert _GENERALITY_LB_EXCL < generality <= _GENERALITY_UB_INCL
+        # b.c. of +1s in numer, gen cannot be 0
+        assert self._GENERALITY_LB_EXCL < generality <= _GENERALITY_UB_INCL
         return generality
 
     def _gen_mutation_noise(self, dim=None):
@@ -121,6 +123,8 @@ class IntegerUnorderedBoundEncoding(UnorderedBoundEncodingABC):
 
 
 class RealUnorderedBoundEncoding(UnorderedBoundEncodingABC):
+    _GENERALITY_LB_INCL = 0
+
     def __init__(self, obs_space):
         assert isinstance(obs_space, RealObsSpace)
         super().__init__(obs_space)
@@ -143,7 +147,8 @@ class RealUnorderedBoundEncoding(UnorderedBoundEncodingABC):
                      for interval in cond_intervals])
         denom = sum([(dim.upper - dim.lower) for dim in self._obs_space])
         generality = numer / denom
-        assert _GENERALITY_LB_EXCL < generality <= _GENERALITY_UB_INCL
+        # gen could be 0 if all intervals in numer collapse to single point
+        assert self._GENERALITY_LB_INCL <= generality <= _GENERALITY_UB_INCL
         return generality
 
     def _gen_mutation_noise(self, dim):
