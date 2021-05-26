@@ -3,13 +3,13 @@ from collections import OrderedDict
 
 from .covering import find_actions_to_cover, gen_covering_classifier
 from .deletion import deletion
-from .error import NoActionError
 from .ga import run_ga
 from .hyperparams import get_hyperparam as get_hp
 from .hyperparams import register_hyperparams
 from .param_update import update_action_set
 from .rng import seed_rng
 from .util import filter_null_prediction_arr_entries
+from .action_selction import NULL_ACTION
 
 
 class XCSF:
@@ -143,7 +143,7 @@ class XCSF:
             # greedy action selection
             return max(prediction_arr, key=prediction_arr.get)
         else:
-            raise NoActionError
+            return NULL_ACTION
 
     def gen_prediction_arr(self, obs):
         """Q-value calculation for outside probing."""

@@ -1,2 +1,0 @@
-class NoActionError(Exception):
-    pass

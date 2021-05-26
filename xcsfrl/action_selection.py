@@ -4,6 +4,8 @@ from .hyperparams import get_hyperparam as get_hp
 from .rng import get_rng
 from .util import filter_null_prediction_arr_entries
 
+NULL_ACTION = -1
+
 
 class ActionSelectionStrategyABC(metaclass=abc.ABCMeta):
     def __init__(self, action_space):
