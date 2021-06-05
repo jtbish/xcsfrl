@@ -1,7 +1,5 @@
 import logging
-import os
 from collections import OrderedDict
-from multiprocessing import Pool
 
 from .action_selection import NULL_ACTION
 from .covering import find_actions_to_cover, gen_covering_classifier
@@ -12,8 +10,6 @@ from .hyperparams import register_hyperparams
 from .param_update import update_action_set
 from .rng import seed_rng
 from .util import filter_null_prediction_arr_entries
-
-_NUM_CPUS = int(os.environ['SLURM_JOB_CPUS_PER_NODE'])
 
 
 class XCSF:
@@ -115,26 +111,6 @@ class XCSF:
 
     def _gen_match_set(self, obs):
         return [clfr for clfr in self._pop if clfr.does_match(obs)]
-
-#    def _gen_match_set_parallel(self, obs):
-#        # if have deleted stuff then pop is full, only do parallel if pop is
-#        # full
-#        do_parallel = self._pop_ops_history["deletion"] > 0
-#        if do_parallel:
-#            with Pool(_NUM_CPUS) as pool:
-#                matching_vec = pool.starmap(self._does_match,
-#                                            [(clfr, obs)
-#                                             for clfr in self._pop])
-#            match_set = [
-#                clfr for (clfr, does_match) in zip(self._pop, matching_vec)
-#                if does_match
-#            ]
-#            return match_set
-#        else:
-#            return self._gen_match_set(obs)
-#
-#    def _does_match(self, clfr, obs):
-#        return clfr.does_match(obs)
 
     def _gen_prediction_arr(self, match_set, obs):
         aug_obs = self._pred_strat.aug_obs(obs)
