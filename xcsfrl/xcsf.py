@@ -9,7 +9,7 @@ from .hyperparams import register_hyperparams
 from .param_update import update_action_set
 from .rng import seed_rng
 from .util import filter_null_prediction_arr_entries
-from .action_selction import NULL_ACTION
+from .action_selection import NULL_ACTION
 
 
 class XCSF:
