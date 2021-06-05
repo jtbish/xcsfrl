@@ -5,7 +5,7 @@ from rlenvs.obs_space import IntegerObsSpace, RealObsSpace
 
 from .condition import Condition
 from .hyperparams import get_hyperparam as get_hp
-from .interval import Interval
+from .interval import IntegerInterval, RealInterval
 from .rng import get_rng
 
 _GENERALITY_UB_INCL = 1.0
@@ -59,7 +59,7 @@ class UnorderedBoundEncodingABC(EncodingABC, metaclass=abc.ABCMeta):
             second_allele = cond_alleles[i + 1]
             lower = min(first_allele, second_allele)
             upper = max(first_allele, second_allele)
-            phenotype.append(Interval(lower, upper))
+            phenotype.append(self._INTERVAL_CLS(lower, upper))
         assert len(phenotype) == len(cond_alleles) // 2
         return phenotype
 
@@ -92,6 +92,7 @@ class UnorderedBoundEncodingABC(EncodingABC, metaclass=abc.ABCMeta):
 
 class IntegerUnorderedBoundEncoding(UnorderedBoundEncodingABC):
     _GENERALITY_LB_EXCL = 0
+    _INTERVAL_CLS = IntegerInterval
 
     def __init__(self, obs_space):
         assert isinstance(obs_space, IntegerObsSpace)
@@ -109,8 +110,7 @@ class IntegerUnorderedBoundEncoding(UnorderedBoundEncodingABC):
     def calc_condition_generality(self, cond_intervals):
         # condition generality calc as in
         # Wilson '00 Mining Oblique Data with XCS
-        numer = sum([(interval.upper - interval.lower + 1)
-                     for interval in cond_intervals])
+        numer = sum([interval.span for interval in cond_intervals])
         denom = sum([(dim.upper - dim.lower + 1) for dim in self._obs_space])
         generality = numer / denom
         # b.c. of +1s in numer, gen cannot be 0
@@ -124,6 +124,7 @@ class IntegerUnorderedBoundEncoding(UnorderedBoundEncodingABC):
 
 class RealUnorderedBoundEncoding(UnorderedBoundEncodingABC):
     _GENERALITY_LB_INCL = 0
+    _INTERVAL_CLS = RealInterval
 
     def __init__(self, obs_space):
         assert isinstance(obs_space, RealObsSpace)
@@ -143,8 +144,7 @@ class RealUnorderedBoundEncoding(UnorderedBoundEncodingABC):
         return (lower, upper)
 
     def calc_condition_generality(self, cond_intervals):
-        numer = sum([(interval.upper - interval.lower)
-                     for interval in cond_intervals])
+        numer = sum([interval.span for interval in cond_intervals])
         denom = sum([(dim.upper - dim.lower) for dim in self._obs_space])
         generality = numer / denom
         # gen could be 0 if all intervals in numer collapse to single point

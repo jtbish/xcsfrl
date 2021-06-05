@@ -9,8 +9,8 @@ _MAX_ACC = 1.0
 
 def update_action_set(action_set, payoff, obs, pop, pop_ops_history,
                       pred_strat):
-    _update_experience(action_set)
     aug_obs = pred_strat.aug_obs(obs)
+    _update_experience(action_set)
     _update_prediction(action_set, payoff, aug_obs)
     use_niche_min_error = (get_hp("beta_epsilon") != 0)
     if use_niche_min_error:

@@ -136,8 +136,8 @@ class PolyPredClassifierBase:
         return self._condition.does_match(obs)
 
     def is_more_general(self, other):
-        my_generality = self._condition.calc_generality()
-        other_generality = other._condition.calc_generality()
+        my_generality = self._condition.generality
+        other_generality = other._condition.generality
         return ((my_generality > other_generality)
                 and self._condition.does_subsume(other._condition))
 
