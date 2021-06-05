@@ -1,5 +1,5 @@
-import logging
 from collections import OrderedDict
+import logging
 
 from .covering import find_actions_to_cover, gen_covering_classifier
 from .deletion import deletion
@@ -31,9 +31,11 @@ class XCSF:
             "ga_subsumption": 0,
             "as_subsumption": 0
         }
+
         self._prev_action_set = None
         self._prev_reward = None
         self._prev_obs = None
+        self._curr_obs = None
         self._time_step = 0
 
     @property
@@ -46,21 +48,22 @@ class XCSF:
 
     def train(self, num_steps):
         # restart episode or resume where left off
-        if self._env.is_terminal():
-            obs = self._env.reset()
-        else:
-            assert self._prev_obs is not None
-            obs = self._prev_obs
+        # prime the current obs
+        if self._curr_obs is None:
+            assert self._env.is_terminal()
+            self._curr_obs = self._env.reset()
 
         steps_done = 0
         while steps_done < num_steps:
-            obs = self._run_step(obs)
+            self._run_step()
             if self._env.is_terminal():
-                obs = self._env.reset()
+                assert self._curr_obs is None
+                self._curr_obs = self._env.reset()
             steps_done += 1
 
-    def _run_step(self, obs):
-        match_set = self._gen_match_set(obs)
+    def _run_step(self):
+        obs = self._curr_obs
+        match_set = self._gen_match_set_and_cover(obs)
         prediction_arr = self._gen_prediction_arr(match_set, obs)
         action = self._select_action(prediction_arr)
         action_set = self._gen_action_set(match_set, action)
@@ -83,15 +86,18 @@ class XCSF:
             run_ga(action_set, self._pop, self._pop_ops_history,
                    self._time_step, self._encoding, self._env.action_space)
             self._prev_action_set = None
+            self._prev_reward = None
+            self._prev_obs = None
+            self._curr_obs = None
         else:
             self._prev_action_set = action_set
             self._prev_reward = reward
             self._prev_obs = obs
+            self._curr_obs = next_obs
         self._time_step += 1
-        return next_obs
 
-    def _gen_match_set(self, obs):
-        match_set = [clfr for clfr in self._pop if clfr.does_match(obs)]
+    def _gen_match_set_and_cover(self, obs):
+        match_set = self._gen_match_set(obs)
         actions_to_cover = find_actions_to_cover(match_set,
                                                  self._env.action_space)
         for action in actions_to_cover:
@@ -102,6 +108,9 @@ class XCSF:
             deletion(self._pop, self._pop_ops_history)
             match_set.append(clfr)
         return match_set
+
+    def _gen_match_set(self, obs):
+        return [clfr for clfr in self._pop if clfr.does_match(obs)]
 
     def _gen_prediction_arr(self, match_set, obs):
         aug_obs = self._pred_strat.aug_obs(obs)
@@ -136,7 +145,7 @@ class XCSF:
 
     def select_action(self, obs):
         """Action selection for testing - always exploit"""
-        match_set = [clfr for clfr in self._pop if clfr.does_match(obs)]
+        match_set = self._gen_match_set(obs)
         if len(match_set) > 0:
             prediction_arr = self._gen_prediction_arr(match_set, obs)
             prediction_arr = filter_null_prediction_arr_entries(prediction_arr)
@@ -147,5 +156,5 @@ class XCSF:
 
     def gen_prediction_arr(self, obs):
         """Q-value calculation for outside probing."""
-        match_set = [clfr for clfr in self._pop if clfr.does_match(obs)]
+        match_set = self._gen_match_set(obs)
         return self._gen_prediction_arr(match_set, obs)
