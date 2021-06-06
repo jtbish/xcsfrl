@@ -7,30 +7,30 @@ from .util import calc_num_micros
 _MAX_ACC = 1.0
 
 
-def update_action_set(action_set, payoff, obs, pop, pop_ops_history,
-                      pred_strat):
+def update_action_set(action_set, payoff, obs, pop, pred_strat):
     aug_obs = pred_strat.aug_obs(obs)
+    x = np.reshape(aug_obs, (1, len(aug_obs)))  # row vector for RLS
     min_error_as = min([clfr.error for clfr in action_set])
     as_num_micros = calc_num_micros(action_set)
     use_niche_min_error = (get_hp("beta_epsilon") != 0)
 
     for clfr in action_set:
         _update_experience(clfr)
-        _update_prediction(clfr, payoff, aug_obs)
+        _update_prediction(clfr, payoff, x, aug_obs)
         _update_niche_min_error(clfr, min_error_as, use_niche_min_error)
         _update_error(clfr, payoff, aug_obs, use_niche_min_error)
         _update_action_set_size(clfr, as_num_micros)
 
     _update_fitness(action_set)
     if get_hp("do_as_subsumption"):
-        action_set_subsumption(action_set, pop, pop_ops_history)
+        action_set_subsumption(action_set, pop)
 
 
 def _update_experience(clfr):
     clfr.experience += 1
 
 
-def _update_prediction(clfr, payoff, aug_obs):
+def _update_prediction(clfr, payoff, x, aug_obs):
     """RLS prediction update."""
     tau_rls = get_hp("tau_rls")
     cov_mat_resets_allowed = (tau_rls > 0)
@@ -39,10 +39,10 @@ def _update_prediction(clfr, payoff, aug_obs):
         if should_reset_cov_mat:
             clfr.reset_cov_mat()
 
-    x = np.reshape(aug_obs, (1, len(aug_obs)))  # row vector
-    beta_rls = 1 + (x @ clfr.cov_mat @ x.T)
+    # optimal matrix parenthesisations pre-calced
+    beta_rls = 1 + (x @ (clfr.cov_mat @ x.T))
     clfr.cov_mat -= (1 /
-                     beta_rls) * (clfr.cov_mat @ x.T @ x @ clfr.cov_mat)
+                     beta_rls) * ((clfr.cov_mat @ x.T) @ (x @ clfr.cov_mat))
     gain_vec = np.dot(clfr.cov_mat, x.T)
     gain_vec = gain_vec.T
     assert gain_vec.shape == x.shape
@@ -65,7 +65,8 @@ def _update_error(clfr, payoff, aug_obs, use_niche_min_error):
     beta = get_hp("beta")
     payoff_diff = abs(payoff - clfr.prediction(aug_obs))
     if use_niche_min_error:
-        # use scheme described in Lanzi '99
+        # use scheme described in Lanzi '99 An Extension to XCS for Stochastic
+        # Environments
         if (payoff_diff - clfr.niche_min_error) >= 0:
             error_target = (payoff_diff - clfr.niche_min_error -
                             clfr.error)

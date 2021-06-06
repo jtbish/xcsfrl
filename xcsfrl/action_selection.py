@@ -1,10 +1,16 @@
 import abc
+from collections import OrderedDict
 
 from .hyperparams import get_hyperparam as get_hp
 from .rng import get_rng
-from .util import filter_null_prediction_arr_entries
 
 NULL_ACTION = -1
+
+
+def filter_null_prediction_arr_entries(prediction_arr):
+    return OrderedDict(
+        {a: p
+         for (a, p) in prediction_arr.items() if p is not None})
 
 
 class ActionSelectionStrategyABC(metaclass=abc.ABCMeta):
