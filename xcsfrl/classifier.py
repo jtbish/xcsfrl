@@ -10,14 +10,15 @@ _TIME_STAMP_MIN = 0
 _ATTR_EQ_REL_TOL = 1e-10
 
 
-class PolyPredClassifierBase:
-    def __init__(self, condition, action, time_step):
+class ClassifierBase:
+    def __init__(self, condition, action, time_step, poly_order):
         """Only used by covering."""
         self._condition = condition
         self._action = action
         self._num_features = len(condition)
-        self._weight_vec = self._init_weight_vec(self._num_features)
-        self._cov_mat = self._init_cov_mat(self._num_features)
+        self._poly_order = poly_order
+        self._weight_vec = self._init_weight_vec(self._num_features,
+                                                 self._poly_order)
         self._niche_min_error = get_hp("mu_I")
         self._error = get_hp("epsilon_I")
         self._fitness = get_hp("fitness_I")
@@ -49,14 +50,6 @@ class PolyPredClassifierBase:
     @weight_vec.setter
     def weight_vec(self, val):
         self._weight_vec = val
-
-    @property
-    def cov_mat(self):
-        return self._cov_mat
-
-    @cov_mat.setter
-    def cov_mat(self, val):
-        self._cov_mat = val
 
     @property
     def niche_min_error(self):
@@ -118,19 +111,14 @@ class PolyPredClassifierBase:
         assert val >= _NUMEROSITY_MIN
         self._numerosity = val
 
-    def _init_weight_vec(self, num_features):
-        # weight vec is of len k*n+1, k = order, n = num features
+    def _init_weight_vec(self, num_features, poly_order):
+        # weight vec is of len k*n+1, k = poly order, n = num features
         low = get_hp("weight_I_min")
         high = get_hp("weight_I_max")
         assert low <= high
         return get_rng().uniform(low,
                                  high,
-                                 size=(self._POLY_ORDER * num_features + 1))
-
-    def _init_cov_mat(self, num_features):
-        # cov mat is of shape (k*n+1)x(k*n+1), k = order, n = num features
-        return np.identity(n=(self._POLY_ORDER*num_features + 1),
-                           dtype=np.float32) * get_hp("delta_rls")
+                                 size=(poly_order * num_features + 1))
 
     def does_match(self, obs):
         return self._condition.does_match(obs)
@@ -144,14 +132,10 @@ class PolyPredClassifierBase:
     def prediction(self, aug_obs):
         return np.dot(aug_obs, self._weight_vec)
 
-    def reset_cov_mat(self):
-        self._cov_mat = self._init_cov_mat(self._num_features)
-
     def __eq__(self, other):
         return (self._condition == other._condition
                 and self._action == other._action
-                and self._weight_vec_is_close(other)
-                and self._cov_mat_is_close(other) and np.isclose(
+                and self._weight_vec_is_close(other) and np.isclose(
                     self._error, other._error, rtol=_ATTR_EQ_REL_TOL)
                 and np.isclose(
                     self._fitness, other._fitness, rtol=_ATTR_EQ_REL_TOL)
@@ -168,14 +152,39 @@ class PolyPredClassifierBase:
                        other._weight_vec,
                        rtol=_ATTR_EQ_REL_TOL))
 
+
+class RLSClassifier(ClassifierBase):
+    """Classifier for Recursive Least Squares prediction. In addition to
+    standard weight vec, also has cov mat."""
+    def __init__(self, condition, action, time_step, poly_order):
+        super().__init__(condition, action, time_step, poly_order)
+        self._cov_mat = self._init_cov_mat(self._num_features,
+                                           self._poly_order)
+
+    @property
+    def cov_mat(self):
+        return self._cov_mat
+
+    @cov_mat.setter
+    def cov_mat(self, val):
+        self._cov_mat = val
+
+    def _init_cov_mat(self, num_features, poly_order):
+        # cov mat is of shape (k*n+1)x(k*n+1), k = poly order, n = num features
+        return np.identity(n=(poly_order * num_features + 1),
+                           dtype=np.float32) * get_hp("delta_rls")
+
+    def reset_cov_mat(self):
+        self._cov_mat = self._init_cov_mat(self._num_features,
+                                           self._poly_order)
+
+    def __eq__(self, other):
+        return super().__eq__(other) and self._cov_mat_is_close(other)
+
     def _cov_mat_is_close(self, other):
         return np.all(
             np.isclose(self._cov_mat, other._cov_mat, rtol=_ATTR_EQ_REL_TOL))
 
 
-class LinearPredClassifier(PolyPredClassifierBase):
-    _POLY_ORDER = 1
-
-
-class QuadraticPredClassifier(PolyPredClassifierBase):
-    _POLY_ORDER = 2
+class MDRClassifier(ClassifierBase):
+    pass

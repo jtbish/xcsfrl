@@ -84,6 +84,7 @@ class XCSF:
 
     def _gen_match_set_and_cover(self, obs):
         match_set = self._gen_match_set(obs)
+        #logging.info(f"Match set size: {len(match_set)}")
         actions_to_cover = find_actions_to_cover(match_set,
                                                  self._env.action_space)
         for action in actions_to_cover:

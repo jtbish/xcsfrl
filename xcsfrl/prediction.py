@@ -2,32 +2,67 @@ import abc
 
 import numpy as np
 
-from .classifier import LinearPredClassifier, QuadraticPredClassifier
+from .classifier import RLSClassifier, MDRClassifier
 from .hyperparams import get_hyperparam as get_hp
+from .augmentation import make_aug_strat
 
 
 class PredictionStrategyABC(metaclass=abc.ABCMeta):
+    def __init__(self, poly_order):
+        poly_order = int(poly_order)
+        assert poly_order >= 1
+        self._poly_order = poly_order
+        self._aug_strat = make_aug_strat(self._poly_order)
+
     def make_classifier(self, condition, action, time_step):
-        return self._CLFR_CLS(condition, action, time_step)
+        return self._CLFR_CLS(condition, action, time_step, self._poly_order)
+
+    def aug_obs(self, obs):
+        return self._aug_strat(obs)
 
     @abc.abstractmethod
-    def aug_obs(self, obs):
+    def update_prediction(self, clfr, payoff, aug_obs):
         raise NotImplementedError
 
 
-class LinearPrediction(PredictionStrategyABC):
-    _CLFR_CLS = LinearPredClassifier
+class RecursiveLeastSquaresPrediction(PredictionStrategyABC):
+    _CLFR_CLS = RLSClassifier
 
-    def aug_obs(self, obs):
-        return np.concatenate(([get_hp("x_nought")], obs))
+    def update_prediction(self, clfr, payoff, aug_obs):
+        tau_rls = get_hp("tau_rls")
+        cov_mat_resets_allowed = (tau_rls > 0)
+        if cov_mat_resets_allowed:
+            should_reset_cov_mat = (clfr.experience % tau_rls == 0)
+            if should_reset_cov_mat:
+                clfr.reset_cov_mat()
+
+        # optimal matrix parenthesisations pre-calced
+        # lambda_rls inclusion as per Butz et al. '08 Function approximation
+        # with XCS: Hyperellipsoidal Conditions, Recursive Least Squares and
+        # Compaction
+        x = np.reshape(aug_obs, (1, len(aug_obs)))  # row vector
+        beta_rls = get_hp("lambda_rls") + (x @ (clfr.cov_mat @ x.T))
+        clfr.cov_mat = (1 / get_hp("lambda_rls")) * (
+            clfr.cov_mat - (1 / beta_rls) *
+            ((clfr.cov_mat @ x.T) @ (x @ clfr.cov_mat)))
+        gain_vec = np.dot(clfr.cov_mat, x.T)
+        gain_vec = gain_vec.T
+        assert gain_vec.shape == x.shape
+        gain_vec = gain_vec[0]
+        assert gain_vec.shape == clfr.weight_vec.shape
+
+        error = payoff - clfr.prediction(aug_obs)
+        clfr.weight_vec += (gain_vec * error)
 
 
-class QuadraticPrediction(PredictionStrategyABC):
-    _CLFR_CLS = QuadraticPredClassifier
+class ModifiedDeltaRulePrediction(PredictionStrategyABC):
+    _CLFR_CLS = MDRClassifier
 
-    def aug_obs(self, obs):
-        aug_obs = []
-        for elem in obs:
-            aug_obs.append(elem)
-            aug_obs.append(elem**2)
-        return np.concatenate(([get_hp("x_nought")], aug_obs))
+    def update_prediction(self, clfr, payoff, aug_obs):
+        """See Lanzi et al. '06 Generalistaion in the XCSF Classifier System:
+        Analysis, Improvement, and Extension (ECJ) - Algorithm 2 for best
+        description."""
+        norm = sum([elem**2 for elem in aug_obs])
+        error = payoff - clfr.prediction(aug_obs)
+        correction = (get_hp("eta") / norm) * error
+        clfr.weight_vec += (aug_obs * correction)

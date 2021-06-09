@@ -36,20 +36,7 @@ def _run_ga(action_set, pop, time_step, encoding, action_space):
 
     do_crossover = get_rng().random() < get_hp("chi")
     if do_crossover:
-        _uniform_crossover(child_a, child_b, encoding)
-
-        # weight vecs and cov mats set as fitness weighted avg of parent ones
-        f_a = parent_a.fitness
-        f_b = parent_b.fitness
-        child_weight_vec = (f_a * parent_a.weight_vec +
-                            f_b * parent_b.weight_vec) / (f_a + f_b)
-        child_a.weight_vec = child_weight_vec
-        child_b.weight_vec = child_weight_vec
-
-        child_cov_mat = (f_a * parent_a.cov_mat + f_b * parent_b.cov_mat) / \
-                        (f_a + f_b)
-        child_a.cov_mat = child_cov_mat
-        child_b.cov_mat = child_cov_mat
+        _two_point_crossover(child_a, child_b, encoding)
 
         child_error = _ERROR_CUTDOWN * (parent_a.error + parent_b.error) / 2
         child_a.error = child_error
@@ -103,31 +90,13 @@ def _two_point_crossover(child_a, child_b, encoding):
     assert len(a_cond_alleles) == len(b_cond_alleles)
     n = len(a_cond_alleles)
 
-    first = get_rng().choice(range(0, n + 1))
-    second = get_rng().choice(range(0, n + 1))
+    first = get_rng().randint(0, n + 1)
+    second = get_rng().randint(0, n + 1)
     cut_start_idx = min(first, second)
     cut_end_idx = max(first, second)
 
     for idx in range(cut_start_idx, cut_end_idx):
         _swap(a_cond_alleles, b_cond_alleles, idx)
-
-    # make and set new Condition objs so phenotypes are properly pre-calced
-    # and cached
-    a_new_cond = Condition(a_cond_alleles, encoding)
-    b_new_cond = Condition(b_cond_alleles, encoding)
-    child_a.condition = a_new_cond
-    child_b.condition = b_new_cond
-
-
-def _uniform_crossover(child_a, child_b, encoding):
-    a_cond_alleles = copy.deepcopy(child_a.condition.alleles)
-    b_cond_alleles = copy.deepcopy(child_b.condition.alleles)
-    assert len(a_cond_alleles) == len(b_cond_alleles)
-    n = len(a_cond_alleles)
-
-    for idx in range(0, n):
-        if get_rng().random() < get_hp("upsilon"):
-            _swap(a_cond_alleles, b_cond_alleles, idx)
 
     # make and set new Condition objs so phenotypes are properly pre-calced
     # and cached
