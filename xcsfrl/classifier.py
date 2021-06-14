@@ -186,5 +186,5 @@ class RLSClassifier(ClassifierBase):
             np.isclose(self._cov_mat, other._cov_mat, rtol=_ATTR_EQ_REL_TOL))
 
 
-class MDRClassifier(ClassifierBase):
+class NLMSClassifier(ClassifierBase):
     pass

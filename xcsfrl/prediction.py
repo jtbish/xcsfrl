@@ -2,7 +2,7 @@ import abc
 
 import numpy as np
 
-from .classifier import RLSClassifier, MDRClassifier
+from .classifier import RLSClassifier, NLMSClassifier
 from .hyperparams import get_hyperparam as get_hp
 from .augmentation import make_aug_strat
 
@@ -55,8 +55,8 @@ class RecursiveLeastSquaresPrediction(PredictionStrategyABC):
         clfr.weight_vec += (gain_vec * error)
 
 
-class ModifiedDeltaRulePrediction(PredictionStrategyABC):
-    _CLFR_CLS = MDRClassifier
+class NormalisedLeastMeanSquaresPrediction(PredictionStrategyABC):
+    _CLFR_CLS = NLMSClassifier
 
     def update_prediction(self, clfr, payoff, aug_obs):
         """See Lanzi et al. '06 Generalistaion in the XCSF Classifier System:
