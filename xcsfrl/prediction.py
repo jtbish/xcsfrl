@@ -41,8 +41,9 @@ class RecursiveLeastSquaresPrediction(PredictionStrategyABC):
         # with XCS: Hyperellipsoidal Conditions, Recursive Least Squares and
         # Compaction
         x = np.reshape(aug_obs, (1, len(aug_obs)))  # row vector
-        beta_rls = get_hp("lambda_rls") + (x @ (clfr.cov_mat @ x.T))
-        clfr.cov_mat = (1 / get_hp("lambda_rls")) * (
+        lambda_rls = get_hp("lambda_rls")
+        beta_rls = lambda_rls + (x @ (clfr.cov_mat @ x.T))
+        clfr.cov_mat = (1 / lambda_rls) * (
             clfr.cov_mat - (1 / beta_rls) *
             ((clfr.cov_mat @ x.T) @ (x @ clfr.cov_mat)))
         gain_vec = np.dot(clfr.cov_mat, x.T)

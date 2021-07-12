@@ -48,3 +48,6 @@ class Population:
 
     def __iter__(self):
         return iter(self._clfrs)
+
+    def __getitem__(self, idx):
+        return self._clfrs[idx]

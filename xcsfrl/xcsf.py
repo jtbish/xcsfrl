@@ -63,14 +63,22 @@ class XCSF:
                 max(prediction_arr.values())
             update_action_set(self._prev_action_set, payoff, self._prev_obs,
                               self._pop, self._pred_strat)
-            run_ga(self._prev_action_set, self._pop, self._time_step,
-                   self._encoding, self._env.action_space)
+            run_ga(self._prev_action_set,
+                   self._pop,
+                   self._time_step,
+                   self._encoding,
+                   self._env.action_space,
+                   active_clfr_set=action_set)  # might need to delete from [A]
         if is_terminal:
             payoff = reward
             update_action_set(action_set, payoff, obs, self._pop,
                               self._pred_strat)
-            run_ga(action_set, self._pop, self._time_step, self._encoding,
-                   self._env.action_space)
+            run_ga(action_set,
+                   self._pop,
+                   self._time_step,
+                   self._encoding,
+                   self._env.action_space,
+                   active_clfr_set=None)  # no point in deleting from [A]
             self._prev_action_set = None
             self._prev_reward = None
             self._prev_obs = None
@@ -91,7 +99,8 @@ class XCSF:
             clfr = gen_covering_classifier(obs, self._encoding, action,
                                            self._time_step, self._pred_strat)
             self._pop.add_new(clfr, op="covering")
-            deletion(self._pop)
+            # might also need to delete from [M]
+            deletion(self._pop, active_clfr_set=match_set)
             match_set.append(clfr)
         return match_set
 

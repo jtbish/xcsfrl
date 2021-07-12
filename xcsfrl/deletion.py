@@ -4,29 +4,34 @@ from .rng import get_rng
 _MIN_NUM_MACROS = 1
 
 
-def deletion(pop):
+def deletion(pop, active_clfr_set):
     max_pop_size = get_hp("N")
     pop_size = pop.num_micros
     num_to_delete = max(0, (pop_size - max_pop_size))
     if num_to_delete > 0:
         for _ in range(num_to_delete):
-            _delete_single_microclfr(pop)
+            _delete_single_microclfr(pop, active_clfr_set)
         assert pop.num_macros >= _MIN_NUM_MACROS
         assert pop.num_micros <= max_pop_size
 
 
-def _delete_single_microclfr(pop):
-    avg_fitness_in_pop = sum([clfr.fitness
-                              for clfr in pop]) / pop.num_micros
-    # since pop is ordered seq. can get away with caching votes at start and
-    # iterating in order to do roulette spin
-    votes = [_deletion_vote(clfr, avg_fitness_in_pop) for clfr in pop]
-    choice_point = get_rng().random() * sum(votes)
-    vote_sum = 0
+def _delete_single_microclfr(pop, active_clfr_set):
+    avg_fitness_in_pop = sum([clfr.fitness for clfr in pop]) / pop.num_micros
+    vote_increase_threshold = get_hp("delta") * avg_fitness_in_pop
+    votes = [
+        _deletion_vote(clfr, avg_fitness_in_pop, vote_increase_threshold)
+        for clfr in pop
+    ]
+    max_vote = max(votes)
+
+    # roulette wheel selection via stochastic acceptance
     clfr_to_remove = None
-    for (clfr, vote) in zip(pop, votes):
-        vote_sum += vote
-        if vote_sum > choice_point:
+    accepted = False
+    while not accepted:
+        idx = get_rng().randint(0, pop.num_macros)
+        (clfr, vote) = (pop[idx], votes[idx])  # since pop ordered this is ok
+        if get_rng().random() < (vote / max_vote):
+            accepted = True
             if clfr.numerosity > 1:
                 pop.alter_numerosity(clfr, delta=-1, op="deletion")
             elif clfr.numerosity == 1:
@@ -34,18 +39,24 @@ def _delete_single_microclfr(pop):
             else:
                 # not possible
                 assert False
-            break
 
     if clfr_to_remove is not None:
         pop.remove(clfr_to_remove, op="deletion")
+        if active_clfr_set is not None:
+            try:
+                active_clfr_set.remove(clfr_to_remove)
+            except ValueError:
+                # not in the set, not a problem
+                pass
 
 
-def _deletion_vote(clfr, avg_fitness_in_pop):
-    vote = clfr.action_set_size * clfr.numerosity
-    has_sufficient_exp = clfr.experience > get_hp("theta_del")
-    scaled_fitness = clfr.fitness / clfr.numerosity
-    has_low_fitness = scaled_fitness < (get_hp("delta") * avg_fitness_in_pop)
-    should_increase_vote = has_sufficient_exp and has_low_fitness
+def _deletion_vote(clfr, avg_fitness_in_pop, vote_increase_threshold):
+    vote = clfr.deletion_vote
+    has_sufficient_exp = clfr.deletion_has_sufficient_exp
+    scaled_fitness = clfr.deletion_numerosity_scaled_fitness
+    # short circuit second part of and to maybe save a bit of time
+    should_increase_vote = has_sufficient_exp and (scaled_fitness <
+                                                   vote_increase_threshold)
     if should_increase_vote:
         vote *= (avg_fitness_in_pop / scaled_fitness)
     return vote

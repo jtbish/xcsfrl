@@ -12,16 +12,19 @@ _ERROR_CUTDOWN = 0.25
 _FITNESS_CUTDOWN = 0.1
 
 
-def run_ga(action_set, pop, time_step, encoding, action_space):
+def run_ga(action_set, pop, time_step, encoding, action_space,
+           active_clfr_set):
     avg_time_stamp_in_as = sum(
         [clfr.time_stamp * clfr.numerosity
          for clfr in action_set]) / calc_num_micros(action_set)
     should_apply_ga = ((time_step - avg_time_stamp_in_as) > get_hp("theta_ga"))
     if should_apply_ga:
-        _run_ga(action_set, pop, time_step, encoding, action_space)
+        _run_ga(action_set, pop, time_step, encoding, action_space,
+                active_clfr_set)
 
 
-def _run_ga(action_set, pop, time_step, encoding, action_space):
+def _run_ga(action_set, pop, time_step, encoding, action_space,
+            active_clfr_set):
     for clfr in action_set:
         clfr.time_stamp = time_step
 
@@ -63,7 +66,7 @@ def _run_ga(action_set, pop, time_step, encoding, action_space):
                 _insert_in_pop(pop, child)
         else:
             _insert_in_pop(pop, child)
-        deletion(pop)
+        deletion(pop, active_clfr_set)
 
 
 def _tournament_selection(action_set):
@@ -85,8 +88,8 @@ def _tournament_selection(action_set):
 
 def _two_point_crossover(child_a, child_b, encoding):
     """Two point crossover on condition allele seqs."""
-    a_cond_alleles = copy.deepcopy(child_a.condition.alleles)
-    b_cond_alleles = copy.deepcopy(child_b.condition.alleles)
+    a_cond_alleles = child_a.condition.alleles
+    b_cond_alleles = child_b.condition.alleles
     assert len(a_cond_alleles) == len(b_cond_alleles)
     n = len(a_cond_alleles)
 
@@ -134,7 +137,9 @@ def _mutate_action(child, action_space):
 
 def _insert_in_pop(pop, child):
     for clfr in pop:
-        if (clfr.condition == child.condition and clfr.action == child.action):
+        # check action first to potentially short circuit more expensive
+        # condition check
+        if (clfr.action == child.action and clfr.condition == child.condition):
             pop.alter_numerosity(clfr, delta=1, op="absorption")
             return
     pop.add_new(child, op="insertion")

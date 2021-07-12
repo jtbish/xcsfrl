@@ -27,6 +27,15 @@ class ClassifierBase:
         self._action_set_size = 1
         self._numerosity = 1
 
+        # "reactive"/calculated params for deletion
+        self._deletion_vote = self._calc_deletion_vote(self._action_set_size,
+                                                       self._numerosity)
+        self._deletion_has_sufficient_exp = \
+            self._calc_deletion_has_sufficient_exp(self._experience)
+        self._deletion_numerosity_scaled_fitness = \
+            self._calc_deletion_numerosity_scaled_fitness(self._fitness,
+                                                          self._numerosity)
+
     @property
     def condition(self):
         return self._condition
@@ -74,6 +83,9 @@ class ClassifierBase:
     @fitness.setter
     def fitness(self, val):
         self._fitness = val
+        self._deletion_numerosity_scaled_fitness = \
+            self._calc_deletion_numerosity_scaled_fitness(self._fitness,
+                                                          self._numerosity)
 
     @property
     def experience(self):
@@ -83,6 +95,8 @@ class ClassifierBase:
     def experience(self, val):
         assert val >= _EXPERIENCE_MIN
         self._experience = val
+        self._deletion_has_sufficient_exp = \
+            self._calc_deletion_has_sufficient_exp(self._experience)
 
     @property
     def time_stamp(self):
@@ -101,6 +115,8 @@ class ClassifierBase:
     def action_set_size(self, val):
         assert val >= _ACTION_SET_SIZE_MIN
         self._action_set_size = val
+        self._deletion_vote = self._calc_deletion_vote(self._action_set_size,
+                                                       self._numerosity)
 
     @property
     def numerosity(self):
@@ -110,6 +126,23 @@ class ClassifierBase:
     def numerosity(self, val):
         assert val >= _NUMEROSITY_MIN
         self._numerosity = val
+        self._deletion_vote = self._calc_deletion_vote(self._action_set_size,
+                                                       self._numerosity)
+        self._deletion_numerosity_scaled_fitness = \
+            self._calc_deletion_numerosity_scaled_fitness(self._fitness,
+                                                          self._numerosity)
+
+    @property
+    def deletion_vote(self):
+        return self._deletion_vote
+
+    @property
+    def deletion_has_sufficient_exp(self):
+        return self._deletion_has_sufficient_exp
+
+    @property
+    def deletion_numerosity_scaled_fitness(self):
+        return self._deletion_numerosity_scaled_fitness
 
     def _init_weight_vec(self, num_features, poly_order):
         # weight vec is of len k*n+1, k = poly order, n = num features
@@ -119,6 +152,15 @@ class ClassifierBase:
         return get_rng().uniform(low,
                                  high,
                                  size=(poly_order * num_features + 1))
+
+    def _calc_deletion_vote(self, action_set_size, numerosity):
+        return action_set_size * numerosity
+
+    def _calc_deletion_has_sufficient_exp(self, experience):
+        return experience > get_hp("theta_del")
+
+    def _calc_deletion_numerosity_scaled_fitness(self, fitness, numerosity):
+        return fitness / numerosity
 
     def does_match(self, obs):
         return self._condition.does_match(obs)
@@ -133,10 +175,20 @@ class ClassifierBase:
         return np.dot(aug_obs, self._weight_vec)
 
     def __eq__(self, other):
+        # Fast version of eq: (condition, action) pair must be unique for all
+        # macroclassifiers. Sufficient for removal checks.
+        return (self._action == other._action) and (self._condition
+                                                    == other._condition)
+
+    def full_eq(self, other):
+        # full version of eq: check all non-calculated params
         return (self._condition == other._condition
                 and self._action == other._action
-                and self._weight_vec_is_close(other) and np.isclose(
-                    self._error, other._error, rtol=_ATTR_EQ_REL_TOL)
+                and self._weight_vec_is_close(other)
+                and np.isclose(self._niche_min_error,
+                               other._niche_min_error,
+                               rtol=_ATTR_EQ_REL_TOL) and
+                np.isclose(self._error, other._error, rtol=_ATTR_EQ_REL_TOL)
                 and np.isclose(
                     self._fitness, other._fitness, rtol=_ATTR_EQ_REL_TOL)
                 and self._experience == other._experience
@@ -178,8 +230,8 @@ class RLSClassifier(ClassifierBase):
         self._cov_mat = self._init_cov_mat(self._num_features,
                                            self._poly_order)
 
-    def __eq__(self, other):
-        return super().__eq__(other) and self._cov_mat_is_close(other)
+    def full_eq(self, other):
+        return super().full_eq(other) and self._cov_mat_is_close(other)
 
     def _cov_mat_is_close(self, other):
         return np.all(
