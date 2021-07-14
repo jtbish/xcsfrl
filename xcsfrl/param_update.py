@@ -6,22 +6,24 @@ _MAX_ACC = 1.0
 
 
 def update_action_set(action_set, payoff, obs, pop, pred_strat):
-    aug_obs = pred_strat.aug_obs(obs)
     use_niche_min_error = (get_hp("beta_epsilon") != 0)
     if use_niche_min_error:
         min_error_as = min([clfr.error for clfr in action_set])
     else:
         min_error_as = None
+
     as_num_micros = calc_num_micros(action_set)
+    aug_obs = pred_strat.aug_obs(obs)
+    proc_obs = pred_strat.process_aug_obs(aug_obs)
 
     for clfr in action_set:
         _update_experience(clfr)
-        pred_strat.update_prediction(clfr, payoff, aug_obs)
+        pred_strat.update_prediction(clfr, payoff, aug_obs, proc_obs)
         _update_niche_min_error(clfr, min_error_as, use_niche_min_error)
         _update_error(clfr, payoff, aug_obs, use_niche_min_error)
         _update_action_set_size(clfr, as_num_micros)
-
     _update_fitness(action_set)
+
     if get_hp("do_as_subsumption"):
         action_set_subsumption(action_set, pop)
 

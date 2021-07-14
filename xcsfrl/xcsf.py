@@ -55,6 +55,8 @@ class XCSF:
         action = self._select_action(prediction_arr)
         action_set = self._gen_action_set(match_set, action)
         (next_obs, reward, is_terminal) = self._env.step(action)
+        if reward == 1.0:
+            logging.info("Made it to goal")
         if self._prev_action_set is not None:
             assert self._prev_reward is not None
             assert self._prev_obs is not None
