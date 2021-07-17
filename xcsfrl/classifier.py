@@ -165,11 +165,11 @@ class ClassifierBase:
     def does_match(self, obs):
         return self._condition.does_match(obs)
 
+    def does_subsume(self, other):
+        return self._condition.does_subsume(other._condition)
+
     def is_more_general(self, other):
-        my_generality = self._condition.generality
-        other_generality = other._condition.generality
-        return ((my_generality > other_generality)
-                and self._condition.does_subsume(other._condition))
+        return self._condition.generality > other._condition.generality
 
     def prediction(self, aug_obs):
         return np.dot(aug_obs, self._weight_vec)

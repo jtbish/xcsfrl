@@ -29,7 +29,7 @@ def action_set_subsumption(action_set, pop):
 def does_subsume(subsumer, subsumee):
     """Determines if subsumer clfr really does subsume subsumee clfr."""
     return (could_subsume(subsumer) and subsumer.action == subsumee.action
-            and subsumer.is_more_general(subsumee))
+            and subsumer.does_subsume(subsumee))
 
 
 def could_subsume(clfr):
