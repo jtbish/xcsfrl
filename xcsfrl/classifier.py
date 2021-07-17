@@ -151,7 +151,8 @@ class ClassifierBase:
         assert low <= high
         return get_rng().uniform(low,
                                  high,
-                                 size=(poly_order * num_features + 1))
+                                 size=(poly_order * num_features + 1)).astype(
+                                     np.float32)
 
     def _calc_deletion_vote(self, action_set_size, numerosity):
         return action_set_size * numerosity
