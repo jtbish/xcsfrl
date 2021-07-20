@@ -77,7 +77,7 @@ class UnorderedBoundEncodingABC(EncodingABC, metaclass=abc.ABCMeta):
                 if get_rng().random() < get_hp("mu"):
                     noise = self._gen_mutation_noise(dim)
                     sign = get_rng().choice([-1, 1])
-                    mut_allele = allele + sign * noise
+                    mut_allele = allele + (sign * noise)
                     mut_allele = np.clip(mut_allele, dim.lower, dim.upper)
                     mut_alleles.append(mut_allele)
                 else:

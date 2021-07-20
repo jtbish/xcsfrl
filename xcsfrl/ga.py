@@ -39,7 +39,7 @@ def _run_ga(action_set, pop, time_step, encoding, action_space,
 
     do_crossover = get_rng().random() < get_hp("chi")
     if do_crossover:
-        _two_point_crossover(child_a, child_b, encoding)
+        _uniform_crossover(child_a, child_b, encoding)
 
         child_error = _ERROR_CUTDOWN * (parent_a.error + parent_b.error) / 2
         child_a.error = child_error
@@ -103,6 +103,23 @@ def _two_point_crossover(child_a, child_b, encoding):
 
     # make and set new Condition objs so phenotypes are properly pre-calced
     # and cached
+    a_new_cond = Condition(a_cond_alleles, encoding)
+    b_new_cond = Condition(b_cond_alleles, encoding)
+    child_a.condition = a_new_cond
+    child_b.condition = b_new_cond
+
+
+def _uniform_crossover(child_a, child_b, encoding):
+    """Uniform crossover on condition allele seqs."""
+    a_cond_alleles = child_a.condition.alleles
+    b_cond_alleles = child_b.condition.alleles
+    assert len(a_cond_alleles) == len(b_cond_alleles)
+    n = len(a_cond_alleles)
+
+    for idx in range(0, n):
+        if get_rng().random() < get_hp("upsilon"):
+            _swap(a_cond_alleles, b_cond_alleles, idx)
+
     a_new_cond = Condition(a_cond_alleles, encoding)
     b_new_cond = Condition(b_cond_alleles, encoding)
     child_a.condition = a_new_cond

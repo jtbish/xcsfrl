@@ -30,7 +30,8 @@ def _delete_single_microclfr(pop, active_clfr_set):
     while not accepted:
         idx = get_rng().randint(0, pop.num_macros)
         (clfr, vote) = (pop[idx], votes[idx])  # since pop ordered this is ok
-        if get_rng().random() < (vote / max_vote):
+        p_accept = (vote / max_vote)
+        if get_rng().random() < p_accept:
             accepted = True
             if clfr.numerosity > 1:
                 pop.alter_numerosity(clfr, delta=-1, op="deletion")

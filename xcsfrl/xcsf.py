@@ -2,7 +2,7 @@ import logging
 from collections import OrderedDict
 
 from .action_selection import NULL_ACTION, filter_null_prediction_arr_entries
-from .covering import find_actions_to_cover, gen_covering_classifier
+from .covering import calc_num_unique_actions, gen_covering_classifier
 from .deletion import deletion
 from .ga import run_ga
 from .hyperparams import get_hyperparam as get_hp
@@ -55,10 +55,10 @@ class XCSF:
         action = self._select_action(prediction_arr)
         action_set = self._gen_action_set(match_set, action)
         (next_obs, reward, is_terminal) = self._env.step(action)
-        if reward == 1.0:
-            logging.info("Got to goal")
+#        if reward == 1.0:
+#            logging.info("Got to goal")
         if self._prev_action_set is not None:
-            logging.info("Updating [A]-1")
+#            logging.info("Updating [A]-1")
             assert self._prev_reward is not None
             assert self._prev_obs is not None
             prediction_arr = filter_null_prediction_arr_entries(prediction_arr)
@@ -73,7 +73,7 @@ class XCSF:
                    self._env.action_space,
                    active_clfr_set=action_set)  # might need to delete from [A]
         if is_terminal:
-            logging.info("Updating [A]")
+#            logging.info("Updating [A]")
             payoff = reward
             update_action_set(action_set, payoff, obs, self._pop,
                               self._pred_strat)
@@ -96,11 +96,10 @@ class XCSF:
 
     def _gen_match_set_and_cover(self, obs):
         match_set = self._gen_match_set(obs)
-        #logging.info(f"Match set size: {len(match_set)}")
-        actions_to_cover = find_actions_to_cover(match_set,
-                                                 self._env.action_space)
-        for action in actions_to_cover:
-            clfr = gen_covering_classifier(obs, self._encoding, action,
+        theta_mna = len(self._env.action_space)  # always cover all actions
+        while (calc_num_unique_actions(match_set) < theta_mna):
+            clfr = gen_covering_classifier(obs, self._encoding, match_set,
+                                           self._env.action_space,
                                            self._time_step, self._pred_strat)
             self._pop.add_new(clfr, op="covering")
             # might also need to delete from [M]
