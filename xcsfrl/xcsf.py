@@ -55,10 +55,7 @@ class XCSF:
         action = self._select_action(prediction_arr)
         action_set = self._gen_action_set(match_set, action)
         (next_obs, reward, is_terminal) = self._env.step(action)
-#        if reward == 1.0:
-#            logging.info("Got to goal")
         if self._prev_action_set is not None:
-#            logging.info("Updating [A]-1")
             assert self._prev_reward is not None
             assert self._prev_obs is not None
             prediction_arr = filter_null_prediction_arr_entries(prediction_arr)
@@ -73,7 +70,6 @@ class XCSF:
                    self._env.action_space,
                    active_clfr_set=action_set)  # might need to delete from [A]
         if is_terminal:
-#            logging.info("Updating [A]")
             payoff = reward
             update_action_set(action_set, payoff, obs, self._pop,
                               self._pred_strat)
