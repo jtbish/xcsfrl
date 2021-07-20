@@ -32,9 +32,9 @@ class ClassifierBase:
                                                        self._numerosity)
         self._deletion_has_sufficient_exp = \
             self._calc_deletion_has_sufficient_exp(self._experience)
-        self._deletion_numerosity_scaled_fitness = \
-            self._calc_deletion_numerosity_scaled_fitness(self._fitness,
-                                                          self._numerosity)
+        self._numerosity_scaled_fitness = \
+            self._calc_numerosity_scaled_fitness(self._fitness,
+                                                 self._numerosity)
 
     @property
     def condition(self):
@@ -83,9 +83,9 @@ class ClassifierBase:
     @fitness.setter
     def fitness(self, val):
         self._fitness = val
-        self._deletion_numerosity_scaled_fitness = \
-            self._calc_deletion_numerosity_scaled_fitness(self._fitness,
-                                                          self._numerosity)
+        self._numerosity_scaled_fitness = \
+            self._calc_numerosity_scaled_fitness(self._fitness,
+                                                 self._numerosity)
 
     @property
     def experience(self):
@@ -128,9 +128,9 @@ class ClassifierBase:
         self._numerosity = val
         self._deletion_vote = self._calc_deletion_vote(self._action_set_size,
                                                        self._numerosity)
-        self._deletion_numerosity_scaled_fitness = \
-            self._calc_deletion_numerosity_scaled_fitness(self._fitness,
-                                                          self._numerosity)
+        self._numerosity_scaled_fitness = \
+            self._calc_numerosity_scaled_fitness(self._fitness,
+                                                 self._numerosity)
 
     @property
     def deletion_vote(self):
@@ -141,8 +141,8 @@ class ClassifierBase:
         return self._deletion_has_sufficient_exp
 
     @property
-    def deletion_numerosity_scaled_fitness(self):
-        return self._deletion_numerosity_scaled_fitness
+    def numerosity_scaled_fitness(self):
+        return self._numerosity_scaled_fitness
 
     def _init_weight_vec(self, num_features, poly_order):
         # weight vec is of len k*n+1, k = poly order, n = num features
@@ -160,7 +160,7 @@ class ClassifierBase:
     def _calc_deletion_has_sufficient_exp(self, experience):
         return experience > get_hp("theta_del")
 
-    def _calc_deletion_numerosity_scaled_fitness(self, fitness, numerosity):
+    def _calc_numerosity_scaled_fitness(self, fitness, numerosity):
         return fitness / numerosity
 
     def does_match(self, obs):

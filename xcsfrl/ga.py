@@ -1,14 +1,14 @@
 import copy
-import math
 
 from .condition import Condition
 from .deletion import deletion
 from .hyperparams import get_hyperparam as get_hp
 from .rng import get_rng
 from .subsumption import does_subsume
-from .util import calc_num_macros, calc_num_micros
+from .util import calc_num_micros
+from .classifier import RLSClassifier
 
-_ERROR_CUTDOWN = 0.25
+_NICHE_MIN_ERROR_CUTDOWN = 0.25
 _FITNESS_CUTDOWN = 0.1
 
 
@@ -25,37 +25,41 @@ def run_ga(action_set, pop, time_step, encoding, action_space,
 
 def _run_ga(action_set, pop, time_step, encoding, action_space,
             active_clfr_set):
+    total_as_error = 0
     for clfr in action_set:
         clfr.time_stamp = time_step
+        total_as_error += clfr.error
 
     parent_a = _tournament_selection(action_set)
     parent_b = _tournament_selection(action_set)
     child_a = copy.deepcopy(parent_a)
     child_b = copy.deepcopy(parent_b)
+    child_a.error = total_as_error
+    child_b.error = total_as_error
     child_a.numerosity = 1
     child_b.numerosity = 1
     child_a.experience = 0
     child_b.experience = 0
+    for child in (child_a, child_b):
+        if isinstance(child, RLSClassifier):
+            child.reset_cov_mat()
 
     do_crossover = get_rng().random() < get_hp("chi")
     if do_crossover:
         _uniform_crossover(child_a, child_b, encoding)
 
-        child_error = _ERROR_CUTDOWN * (parent_a.error + parent_b.error) / 2
-        child_a.error = child_error
-        child_b.error = child_error
+        avg_parent_niche_min_error = (parent_a.niche_min_error +
+                                      parent_b.niche_min_error) / 2
+        child_a.niche_min_error = avg_parent_niche_min_error
+        child_b.niche_min_error = avg_parent_niche_min_error
 
-        child_fitness = _FITNESS_CUTDOWN * (parent_a.fitness +
-                                            parent_b.fitness) / 2
-        child_a.fitness = child_fitness
-        child_b.fitness = child_fitness
-
-        child_niche_min_error = _ERROR_CUTDOWN * (parent_a.niche_min_error +
-                                                  parent_b.niche_min_error) / 2
-        child_a.niche_min_error = child_niche_min_error
-        child_b.niche_min_error = child_niche_min_error
+        avg_parent_fitness = (parent_a.fitness + parent_b.fitness) / 2
+        child_a.fitness = avg_parent_fitness
+        child_b.fitness = avg_parent_fitness
 
     for child in (child_a, child_b):
+        child.niche_min_error *= _NICHE_MIN_ERROR_CUTDOWN
+        child.fitness *= _FITNESS_CUTDOWN
         _mutation(child, encoding, action_space)
         if get_hp("do_ga_subsumption"):
             if does_subsume(parent_a, child):
@@ -70,43 +74,19 @@ def _run_ga(action_set, pop, time_step, encoding, action_space,
 
 
 def _tournament_selection(action_set):
-    def _select_random(action_set):
-        idx = get_rng().randint(0, len(action_set))
-        return action_set[idx]
-
-    as_size = calc_num_macros(action_set)
-    tourn_size = math.ceil(get_hp("tau") * as_size)
-    assert 1 <= tourn_size <= as_size
-
-    best = _select_random(action_set)
-    for _ in range(2, (tourn_size + 1)):
-        clfr = _select_random(action_set)
-        if clfr.fitness > best.fitness:
-            best = clfr
+    """From Butz book 'Rule Based Evolutionary Online Learning Systems' SELECT
+    OFFSPRING function in Appendix B."""
+    best = None
+    while best is None:
+        max_fitness = 0
+        for clfr in action_set:
+            if clfr.numerosity_scaled_fitness > max_fitness:
+                for _ in range(clfr.numerosity):
+                    if get_rng().random() < get_hp("tau"):
+                        best = clfr
+                        max_fitness = clfr.numerosity_scaled_fitness
+                        break
     return best
-
-
-def _two_point_crossover(child_a, child_b, encoding):
-    """Two point crossover on condition allele seqs."""
-    a_cond_alleles = child_a.condition.alleles
-    b_cond_alleles = child_b.condition.alleles
-    assert len(a_cond_alleles) == len(b_cond_alleles)
-    n = len(a_cond_alleles)
-
-    first = get_rng().randint(0, n + 1)
-    second = get_rng().randint(0, n + 1)
-    cut_start_idx = min(first, second)
-    cut_end_idx = max(first, second)
-
-    for idx in range(cut_start_idx, cut_end_idx):
-        _swap(a_cond_alleles, b_cond_alleles, idx)
-
-    # make and set new Condition objs so phenotypes are properly pre-calced
-    # and cached
-    a_new_cond = Condition(a_cond_alleles, encoding)
-    b_new_cond = Condition(b_cond_alleles, encoding)
-    child_a.condition = a_new_cond
-    child_b.condition = b_new_cond
 
 
 def _uniform_crossover(child_a, child_b, encoding):
@@ -116,6 +96,9 @@ def _uniform_crossover(child_a, child_b, encoding):
     assert len(a_cond_alleles) == len(b_cond_alleles)
     n = len(a_cond_alleles)
 
+    def _swap(seq_a, seq_b, idx):
+        seq_a[idx], seq_b[idx] = seq_b[idx], seq_a[idx]
+
     for idx in range(0, n):
         if get_rng().random() < get_hp("upsilon"):
             _swap(a_cond_alleles, b_cond_alleles, idx)
@@ -124,10 +107,6 @@ def _uniform_crossover(child_a, child_b, encoding):
     b_new_cond = Condition(b_cond_alleles, encoding)
     child_a.condition = a_new_cond
     child_b.condition = b_new_cond
-
-
-def _swap(seq_a, seq_b, idx):
-    seq_a[idx], seq_b[idx] = seq_b[idx], seq_a[idx]
 
 
 def _mutation(child, encoding, action_space):

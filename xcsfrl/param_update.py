@@ -18,9 +18,9 @@ def update_action_set(action_set, payoff, obs, pop, pred_strat):
 
     for clfr in action_set:
         _update_experience(clfr)
-        pred_strat.update_prediction(clfr, payoff, aug_obs, proc_obs)
         _update_niche_min_error(clfr, min_error_as, use_niche_min_error)
         _update_error(clfr, payoff, aug_obs, use_niche_min_error)
+        pred_strat.update_prediction(clfr, payoff, aug_obs, proc_obs)
         _update_action_set_size(clfr, as_num_micros)
     _update_fitness(action_set)
 

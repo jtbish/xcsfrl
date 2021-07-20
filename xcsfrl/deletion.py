@@ -54,7 +54,7 @@ def _delete_single_microclfr(pop, active_clfr_set):
 def _deletion_vote(clfr, avg_fitness_in_pop, vote_increase_threshold):
     vote = clfr.deletion_vote
     has_sufficient_exp = clfr.deletion_has_sufficient_exp
-    scaled_fitness = clfr.deletion_numerosity_scaled_fitness
+    scaled_fitness = clfr.numerosity_scaled_fitness
     # short circuit second part of and to maybe save a bit of time
     should_increase_vote = has_sufficient_exp and (scaled_fitness <
                                                    vote_increase_threshold)
