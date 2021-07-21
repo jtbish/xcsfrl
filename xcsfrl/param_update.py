@@ -18,8 +18,11 @@ def update_action_set(action_set, payoff, obs, pop, pred_strat):
 
     for clfr in action_set:
         _update_experience(clfr)
-        _update_niche_min_error(clfr, min_error_as, use_niche_min_error)
-        _update_error(clfr, payoff, aug_obs, use_niche_min_error)
+        if use_niche_min_error:
+            _update_niche_min_error(clfr, min_error_as)
+            _update_error_with_mu(clfr, payoff, aug_obs)
+        else:
+            _update_error(clfr, payoff, aug_obs)
         pred_strat.update_prediction(clfr, payoff, aug_obs, proc_obs)
         _update_action_set_size(clfr, as_num_micros)
     _update_fitness(action_set)
@@ -32,27 +35,35 @@ def _update_experience(clfr):
     clfr.experience += 1
 
 
-def _update_niche_min_error(clfr, min_error_as, use_niche_min_error):
-    if use_niche_min_error:
-        # don't use MAM for mu param in accordance with philosophy of using
-        # small learning rate; want small updates to favour stability
-        min_error_diff = (min_error_as - clfr.niche_min_error)
-        clfr.niche_min_error += (get_hp("beta_epsilon") * min_error_diff)
+def _update_niche_min_error(clfr, min_error_as):
+    beta_epsilon = get_hp("beta_epsilon")
+    min_error_diff = (min_error_as - clfr.niche_min_error)
+    if clfr.experience < (1 / beta_epsilon):
+        clfr.niche_min_error += (min_error_diff / clfr.experience)
+    else:
+        clfr.niche_min_error += (beta_epsilon * min_error_diff)
 
 
-def _update_error(clfr, payoff, aug_obs, use_niche_min_error):
+def _update_error_with_mu(clfr, payoff, aug_obs):
     beta = get_hp("beta")
     payoff_diff = abs(payoff - clfr.prediction(aug_obs))
-    if use_niche_min_error:
-        # use scheme described in Lanzi '99 An Extension to XCS for Stochastic
-        # Environments
-        if (payoff_diff - clfr.niche_min_error) >= 0:
-            error_target = (payoff_diff - clfr.niche_min_error - clfr.error)
-        else:
-            error_target = (get_hp("epsilon_nought") - clfr.error)
+    # use scheme described in Lanzi '99 An Extension to XCS for Stochastic
+    # Environments
+    if (payoff_diff - clfr.niche_min_error) >= 0:
+        error_target = (payoff_diff - clfr.niche_min_error - clfr.error)
     else:
-        error_target = (payoff_diff - clfr.error)
+        error_target = (get_hp("epsilon_nought") - clfr.error)
 
+    if clfr.experience < (1 / beta):
+        clfr.error += (error_target / clfr.experience)
+    else:
+        clfr.error += (beta * error_target)
+
+
+def _update_error(clfr, payoff, aug_obs):
+    beta = get_hp("beta")
+    payoff_diff = abs(payoff - clfr.prediction(aug_obs))
+    error_target = (payoff_diff - clfr.error)
     if clfr.experience < (1 / beta):
         clfr.error += (error_target / clfr.experience)
     else:

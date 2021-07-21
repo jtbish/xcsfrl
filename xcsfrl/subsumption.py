@@ -17,7 +17,7 @@ def action_set_subsumption(action_set, pop):
         # iter over copy of [A] so can remove subsumees from actual [A] within
         # loop
         for clfr in copy.deepcopy(action_set):
-            if most_general_clfr.is_more_general(clfr):
+            if most_general_clfr.does_subsume(clfr):
                 num_micros_subsumed = clfr.numerosity
                 pop.alter_numerosity(most_general_clfr,
                                      delta=num_micros_subsumed,
