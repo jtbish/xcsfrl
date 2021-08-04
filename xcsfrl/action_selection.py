@@ -1,10 +1,23 @@
 import abc
 from collections import OrderedDict
+from enum import Enum
 
 from .hyperparams import get_hyperparam as get_hp
 from .rng import get_rng
 
 NULL_ACTION = -1
+
+ActionSelectionModes = Enum("ActionSelectionModes", ["explore", "exploit"])
+
+
+def choose_action_selection_mode():
+    # 50/50 chance of either explore/exploit on episode start
+    return get_rng().choice(list(iter(ActionSelectionModes)))
+
+
+def greedy_action_selection(prediction_arr):
+    prediction_arr = filter_null_prediction_arr_entries(prediction_arr)
+    return max(prediction_arr, key=prediction_arr.get)
 
 
 def filter_null_prediction_arr_entries(prediction_arr):
@@ -29,5 +42,4 @@ class FixedEpsilonGreedy(ActionSelectionStrategyABC):
         if should_explore:
             return get_rng().choice(self._action_space)
         else:
-            prediction_arr = filter_null_prediction_arr_entries(prediction_arr)
-            return max(prediction_arr, key=prediction_arr.get)
+            return greedy_action_selection(prediction_arr)

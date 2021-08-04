@@ -1,7 +1,10 @@
 import logging
 from collections import OrderedDict
 
-from .action_selection import NULL_ACTION, filter_null_prediction_arr_entries
+from .action_selection import (NULL_ACTION, ActionSelectionModes,
+                               choose_action_selection_mode,
+                               filter_null_prediction_arr_entries,
+                               greedy_action_selection)
 from .covering import calc_num_unique_actions, gen_covering_classifier
 from .deletion import deletion
 from .ga import run_ga
@@ -28,6 +31,7 @@ class XCSF:
         self._prev_obs = None
         self._curr_obs = None
         self._time_step = 0
+        self._action_selection_mode = choose_action_selection_mode()
 
     @property
     def pop(self):
@@ -39,6 +43,7 @@ class XCSF:
         if self._curr_obs is None:
             assert self._env.is_terminal()
             self._curr_obs = self._env.reset()
+            self._action_selection_mode = choose_action_selection_mode()
 
         steps_done = 0
         while steps_done < num_steps:
@@ -46,6 +51,7 @@ class XCSF:
             if self._env.is_terminal():
                 assert self._curr_obs is None
                 self._curr_obs = self._env.reset()
+                self._action_selection_mode = choose_action_selection_mode()
             steps_done += 1
 
     def _run_step(self):
@@ -54,7 +60,7 @@ class XCSF:
         prediction_arr = self._gen_prediction_arr(match_set, obs)
         action = self._select_action(prediction_arr)
         action_set = self._gen_action_set(match_set, action)
-        (next_obs, reward, is_terminal) = self._env.step(action)
+        (next_obs, reward, is_terminal, _) = self._env.step(action)
         if self._prev_action_set is not None:
             assert self._prev_reward is not None
             assert self._prev_obs is not None
@@ -63,22 +69,24 @@ class XCSF:
                 max(prediction_arr.values())
             update_action_set(self._prev_action_set, payoff, self._prev_obs,
                               self._pop, self._pred_strat)
-            run_ga(self._prev_action_set,
-                   self._pop,
-                   self._time_step,
-                   self._encoding,
-                   self._env.action_space,
-                   active_clfr_set=action_set)  # might need to delete from [A]
+            self._try_run_ga(
+                self._prev_action_set,
+                self._pop,
+                self._time_step,
+                self._encoding,
+                self._env.action_space,
+                active_clfr_set=action_set)  # might need to delete from [A]
         if is_terminal:
             payoff = reward
             update_action_set(action_set, payoff, obs, self._pop,
                               self._pred_strat)
-            run_ga(action_set,
-                   self._pop,
-                   self._time_step,
-                   self._encoding,
-                   self._env.action_space,
-                   active_clfr_set=None)  # no point in deleting from [A]
+            self._try_run_ga(
+                action_set,
+                self._pop,
+                self._time_step,
+                self._encoding,
+                self._env.action_space,
+                active_clfr_set=None)  # no point in deleting from [A]
             self._prev_action_set = None
             self._prev_reward = None
             self._prev_obs = None
@@ -132,20 +140,30 @@ class XCSF:
         return prediction_arr
 
     def _select_action(self, prediction_arr):
-        """Action selection for training - use action selection strat."""
-        return self._action_selection_strat(prediction_arr, self._time_step)
+        if self._action_selection_mode == ActionSelectionModes.explore:
+            return self._action_selection_strat(prediction_arr,
+                                                self._time_step)
+        elif self._action_selection_mode == ActionSelectionModes.exploit:
+            return greedy_action_selection(prediction_arr)
+        else:
+            assert False
 
     def _gen_action_set(self, match_set, action):
         return [clfr for clfr in match_set if clfr.action == action]
 
+    def _try_run_ga(self, action_set, pop, time_step, encoding, action_space,
+                    active_clfr_set):
+        # GA only active on exploration episodes/"problems"
+        if self._action_selection_mode == ActionSelectionModes.explore:
+            run_ga(action_set, pop, time_step, encoding, action_space,
+                   active_clfr_set)
+
     def select_action(self, obs):
-        """Action selection for testing - always exploit"""
+        """Action selection for outside testing - always exploit"""
         match_set = self._gen_match_set(obs)
         if len(match_set) > 0:
             prediction_arr = self._gen_prediction_arr(match_set, obs)
-            prediction_arr = filter_null_prediction_arr_entries(prediction_arr)
-            # greedy action selection
-            return max(prediction_arr, key=prediction_arr.get)
+            return greedy_action_selection(prediction_arr)
         else:
             return NULL_ACTION
 

@@ -8,7 +8,8 @@ from .subsumption import does_subsume
 from .util import calc_num_micros
 from .classifier import RLSClassifier
 
-_NICHE_MIN_ERROR_CUTDOWN = 0.25
+_ERROR_CUTDOWN = 0.25
+_NICHE_MIN_ERROR_CUTDOWN = _ERROR_CUTDOWN
 _FITNESS_CUTDOWN = 0.1
 
 
@@ -25,17 +26,13 @@ def run_ga(action_set, pop, time_step, encoding, action_space,
 
 def _run_ga(action_set, pop, time_step, encoding, action_space,
             active_clfr_set):
-    total_as_error = 0
     for clfr in action_set:
         clfr.time_stamp = time_step
-        total_as_error += clfr.error
 
     parent_a = _tournament_selection(action_set)
     parent_b = _tournament_selection(action_set)
     child_a = copy.deepcopy(parent_a)
     child_b = copy.deepcopy(parent_b)
-    child_a.error = total_as_error
-    child_b.error = total_as_error
     child_a.numerosity = 1
     child_b.numerosity = 1
     child_a.experience = 0
@@ -53,12 +50,17 @@ def _run_ga(action_set, pop, time_step, encoding, action_space,
         child_a.niche_min_error = avg_parent_niche_min_error
         child_b.niche_min_error = avg_parent_niche_min_error
 
+        avg_parent_error = (parent_a.error + parent_b.error) / 2
+        child_a.error = avg_parent_error
+        child_b.error = avg_parent_error
+
         avg_parent_fitness = (parent_a.fitness + parent_b.fitness) / 2
         child_a.fitness = avg_parent_fitness
         child_b.fitness = avg_parent_fitness
 
     for child in (child_a, child_b):
         child.niche_min_error *= _NICHE_MIN_ERROR_CUTDOWN
+        child.error *= _ERROR_CUTDOWN
         child.fitness *= _FITNESS_CUTDOWN
         _mutation(child, encoding, action_space)
         if get_hp("do_ga_subsumption"):
