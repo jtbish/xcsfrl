@@ -31,13 +31,12 @@ class XCSF:
         self._prev_obs = None
         self._curr_obs = None
         self._time_step = 0
-        self._action_selection_mode = choose_action_selection_mode()
 
     @property
     def pop(self):
         return self._pop
 
-    def train(self, num_steps):
+    def train_for_time_steps(self, num_steps):
         # restart episode or resume where left off
         # prime the current obs
         if self._curr_obs is None:
@@ -53,6 +52,17 @@ class XCSF:
                 self._curr_obs = self._env.reset()
                 self._action_selection_mode = choose_action_selection_mode()
             steps_done += 1
+
+    def train_for_episodes(self, num_episodes):
+        # should always be in terminal state when starting this func
+        assert self._curr_obs is None
+        assert self._env.is_terminal()
+
+        for _ in range(num_episodes):
+            self._curr_obs = self._env.reset()
+            self._action_selection_mode = choose_action_selection_mode()
+            while not self._env.is_terminal():
+                self._run_step()
 
     def _run_step(self):
         obs = self._curr_obs
