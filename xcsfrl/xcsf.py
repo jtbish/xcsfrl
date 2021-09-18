@@ -62,10 +62,8 @@ class XCSF:
         for _ in range(num_episodes):
             self._curr_obs = self._env.reset()
             self._action_selection_mode = choose_action_selection_mode()
-            num_episode_steps = 0
             while not self._env.is_terminal():
                 self._run_step()
-                num_episode_steps += 1
             self._episodes_trained += 1
 
     def _run_step(self):
