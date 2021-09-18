@@ -1,12 +1,13 @@
 import copy
+import logging
 
+from .classifier import RLSClassifier
 from .condition import Condition
 from .deletion import deletion
 from .hyperparams import get_hyperparam as get_hp
 from .rng import get_rng
 from .subsumption import does_subsume
-from .util import calc_num_micros
-from .classifier import RLSClassifier
+from .util import calc_num_macros, calc_num_micros
 
 _ERROR_CUTDOWN = 0.25
 _NICHE_MIN_ERROR_CUTDOWN = _ERROR_CUTDOWN
@@ -15,6 +16,9 @@ _FITNESS_CUTDOWN = 0.1
 
 def run_ga(action_set, pop, time_step, encoding, action_space,
            active_clfr_set):
+    as_is_empty = (calc_num_macros(action_set) == 0)
+    assert not as_is_empty
+
     avg_time_stamp_in_as = sum(
         [clfr.time_stamp * clfr.numerosity
          for clfr in action_set]) / calc_num_micros(action_set)

@@ -67,8 +67,6 @@ class XCSF:
                 self._run_step()
                 num_episode_steps += 1
             self._episodes_trained += 1
-#            logging.info(f"Training episode {self._episodes_trained}: "
-#                         f"{num_episode_steps} time steps used")
 
     def _run_step(self):
         obs = self._curr_obs

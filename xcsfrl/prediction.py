@@ -6,6 +6,8 @@ from .augmentation import make_aug_strat
 from .classifier import NLMSClassifier, RLSClassifier
 from .hyperparams import get_hyperparam as get_hp
 
+np.seterr(all="raise")
+
 
 class PredictionStrategyABC(metaclass=abc.ABCMeta):
     def __init__(self, poly_order):

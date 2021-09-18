@@ -3,6 +3,8 @@ import numpy as np
 from .hyperparams import get_hyperparam as get_hp
 from .rng import get_rng
 
+np.seterr(all="raise")
+
 _EXPERIENCE_MIN = 0
 _ACTION_SET_SIZE_MIN = 1
 _NUMEROSITY_MIN = 1
