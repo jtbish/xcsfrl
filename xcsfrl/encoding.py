@@ -1,6 +1,5 @@
 import abc
 
-import numpy as np
 from rlenvs.obs_space import IntegerObsSpace, RealObsSpace
 
 from .condition import Condition
@@ -78,7 +77,8 @@ class UnorderedBoundEncodingABC(EncodingABC, metaclass=abc.ABCMeta):
                     noise = self._gen_mutation_noise(dim)
                     sign = get_rng().choice([-1, 1])
                     mut_allele = allele + (sign * noise)
-                    mut_allele = np.clip(mut_allele, dim.lower, dim.upper)
+                    mut_allele = max(mut_allele, dim.lower)
+                    mut_allele = min(mut_allele, dim.upper)
                     mut_alleles.append(mut_allele)
                 else:
                     mut_alleles.append(allele)
