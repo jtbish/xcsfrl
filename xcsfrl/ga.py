@@ -67,6 +67,7 @@ def _run_ga(action_set, pop, time_step, encoding, action_space,
         child.error *= _ERROR_CUTDOWN
         child.fitness *= _FITNESS_CUTDOWN
         _mutation(child, encoding, action_space)
+
         if get_hp("do_ga_subsumption"):
             if does_subsume(parent_a, child):
                 pop.alter_numerosity(parent_a, delta=1, op="ga_subsumption")

@@ -6,7 +6,7 @@ from .augmentation import make_aug_strat
 from .classifier import NLMSClassifier, RLSClassifier
 from .hyperparams import get_hyperparam as get_hp
 
-np.seterr(all="raise")
+np.seterr(divide="raise", over="raise", invalid="raise")
 
 
 class PredictionStrategyABC(metaclass=abc.ABCMeta):
@@ -45,7 +45,7 @@ class RecursiveLeastSquaresPrediction(PredictionStrategyABC):
             if should_reset_cov_mat:
                 clfr.reset_cov_mat()
 
-        # optimal matrix parenthesisations pre-calced
+        # optimal matrix parenthesisations pre-calced via DP
         # lambda_rls inclusion as per Butz et al. '08 Function approximation
         # with XCS: Hyperellipsoidal Conditions, Recursive Least Squares and
         # Compaction

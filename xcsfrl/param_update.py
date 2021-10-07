@@ -4,7 +4,7 @@ from .hyperparams import get_hyperparam as get_hp
 from .subsumption import action_set_subsumption
 from .util import calc_num_micros
 
-np.seterr(all="raise")
+np.seterr(divide="raise", over="raise", invalid="raise")
 
 _MAX_ACC = 1.0
 

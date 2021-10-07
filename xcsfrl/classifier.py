@@ -3,7 +3,7 @@ import numpy as np
 from .hyperparams import get_hyperparam as get_hp
 from .rng import get_rng
 
-np.seterr(all="raise")
+np.seterr(divide="raise", over="raise", invalid="raise")
 
 _EXPERIENCE_MIN = 0
 _ACTION_SET_SIZE_MIN = 1
@@ -181,6 +181,8 @@ class ClassifierBase:
     def __eq__(self, other):
         # Fast version of eq: (condition, action) pair must be unique for all
         # macroclassifiers. Sufficient for removal checks.
+        # Check action first since might short circuit and less expensive than
+        # cond. check.
         return (self._action == other._action) and (self._condition
                                                     == other._condition)
 

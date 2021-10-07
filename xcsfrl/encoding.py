@@ -48,6 +48,7 @@ class UnorderedBoundEncodingABC(EncodingABC, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def _gen_covering_alleles(self, obs_compt, dim):
+        """Return (lower, upper) covering alleles, with lower <= upper."""
         raise NotImplementedError
 
     def decode(self, cond_alleles):
@@ -111,7 +112,7 @@ class IntegerUnorderedBoundEncoding(UnorderedBoundEncodingABC):
         # condition generality calc as in
         # Wilson '00 Mining Oblique Data with XCS
         numer = sum([interval.span for interval in cond_intervals])
-        denom = sum([(dim.upper - dim.lower + 1) for dim in self._obs_space])
+        denom = sum([dim.span for dim in self._obs_space])
         generality = numer / denom
         # b.c. of +1s in numer, gen cannot be 0
         assert self._GENERALITY_LB_EXCL < generality <= _GENERALITY_UB_INCL
@@ -133,19 +134,18 @@ class RealUnorderedBoundEncoding(UnorderedBoundEncodingABC):
     def _gen_covering_alleles(self, obs_compt, dim):
         # r_0 interpreted as fraction of dim span to draw uniform random noise
         # from
-        dim_span = (dim.upper - dim.lower)
         r_nought = get_hp("r_nought")
         assert 0.0 < r_nought <= 1.0
-        mut_high = r_nought * dim_span
-        lower = obs_compt - get_rng().uniform(low=0, high=mut_high)
-        upper = obs_compt + get_rng().uniform(low=0, high=mut_high)
+        cover_high = (r_nought * dim.span)
+        lower = obs_compt - get_rng().uniform(low=0, high=cover_high)
+        upper = obs_compt + get_rng().uniform(low=0, high=cover_high)
         lower = max(lower, dim.lower)
         upper = min(upper, dim.upper)
         return (lower, upper)
 
     def calc_condition_generality(self, cond_intervals):
         numer = sum([interval.span for interval in cond_intervals])
-        denom = sum([(dim.upper - dim.lower) for dim in self._obs_space])
+        denom = sum([dim for dim in self._obs_space])
         generality = numer / denom
         # gen could be 0 if all intervals in numer collapse to single point
         assert self._GENERALITY_LB_INCL <= generality <= _GENERALITY_UB_INCL
@@ -154,8 +154,7 @@ class RealUnorderedBoundEncoding(UnorderedBoundEncodingABC):
     def _gen_mutation_noise(self, dim):
         # m_0 interpreted as fraction of dim span to draw uniform random
         # noise from
-        dim_span = (dim.upper - dim.lower)
         m_nought = get_hp("m_nought")
         assert 0.0 < m_nought <= 1.0
-        mut_high = m_nought * dim_span
+        mut_high = (m_nought * dim.span)
         return get_rng().uniform(low=0, high=mut_high)

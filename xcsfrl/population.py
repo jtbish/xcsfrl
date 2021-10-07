@@ -1,5 +1,5 @@
 class Population:
-    """Population is just a list with tracking of the number of
+    """Population is just a list of macroclassifiers with tracking of the number of
     microclassifiers, in order to avoid having to calculate this number on the
     fly repeatedly and waste time."""
     def __init__(self):
@@ -37,6 +37,7 @@ class Population:
         self._num_micros += delta
         assert op in ("absorption", "deletion", "ga_subsumption",
                       "as_subsumption")
+        # delta can be neg. (obviously), but op. counts are pos.
         self._ops_history[op] += abs(delta)
 
     def remove(self, clfr, op=None):
