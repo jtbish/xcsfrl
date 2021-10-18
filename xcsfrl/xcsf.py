@@ -22,8 +22,12 @@ class XCSF:
         self._encoding = encoding
         self._action_selection_strat = action_selection_strat
         self._pred_strat = pred_strat
-        register_hyperparams(hyperparams_dict)
+        self._hyperparams_dict = hyperparams_dict
+        register_hyperparams(self._hyperparams_dict)
         seed_rng(get_hp("seed"))
+        # cache x_nought so can use it after pickling to do predictions without
+        # re-registering hyperparams
+        self._x_nought = get_hp("x_nought")
 
         self._pop = Population()
         self._prev_action_set = None
@@ -80,7 +84,7 @@ class XCSF:
             payoff = self._prev_reward + get_hp("gamma") * \
                 max(prediction_arr.values())
             update_action_set(self._prev_action_set, payoff, self._prev_obs,
-                              self._pop, self._pred_strat)
+                              self._pop, self._pred_strat, self._x_nought)
             self._try_run_ga(
                 self._prev_action_set,
                 self._pop,
@@ -91,7 +95,7 @@ class XCSF:
         if is_terminal:
             payoff = reward
             update_action_set(action_set, payoff, obs, self._pop,
-                              self._pred_strat)
+                              self._pred_strat, self._x_nought)
             self._try_run_ga(
                 action_set,
                 self._pop,
@@ -127,7 +131,7 @@ class XCSF:
         return [clfr for clfr in self._pop if clfr.does_match(obs)]
 
     def _gen_prediction_arr(self, match_set, obs):
-        aug_obs = self._pred_strat.aug_obs(obs)
+        aug_obs = self._pred_strat.aug_obs(obs, self._x_nought)
 
         prediction_arr = OrderedDict(
             {action: None

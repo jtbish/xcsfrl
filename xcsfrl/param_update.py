@@ -9,7 +9,7 @@ np.seterr(divide="raise", over="raise", invalid="raise")
 _MAX_ACC = 1.0
 
 
-def update_action_set(action_set, payoff, obs, pop, pred_strat):
+def update_action_set(action_set, payoff, obs, pop, pred_strat, x_nought):
     use_niche_min_error = (get_hp("beta_epsilon") != 0)
     if use_niche_min_error:
         min_error_as = min([clfr.error for clfr in action_set])
@@ -17,7 +17,7 @@ def update_action_set(action_set, payoff, obs, pop, pred_strat):
         min_error_as = None
 
     as_num_micros = calc_num_micros(action_set)
-    aug_obs = pred_strat.aug_obs(obs)
+    aug_obs = pred_strat.aug_obs(obs, x_nought)
     proc_obs = pred_strat.process_aug_obs(aug_obs)
 
     for clfr in action_set:

@@ -19,8 +19,8 @@ class PredictionStrategyABC(metaclass=abc.ABCMeta):
     def make_classifier(self, condition, action, time_step):
         return self._CLFR_CLS(condition, action, time_step, self._poly_order)
 
-    def aug_obs(self, obs):
-        return self._aug_strat(obs)
+    def aug_obs(self, obs, x_nought):
+        return self._aug_strat(obs, x_nought)
 
     @abc.abstractmethod
     def process_aug_obs(self, aug_obs):
