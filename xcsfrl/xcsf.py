@@ -90,8 +90,7 @@ class XCSF:
                 self._pop,
                 self._time_step,
                 self._encoding,
-                self._env.action_space,
-                active_clfr_set=action_set)  # might need to delete from [A]
+                self._env.action_space)
         if is_terminal:
             payoff = reward
             update_action_set(action_set, payoff, obs, self._pop,
@@ -101,8 +100,7 @@ class XCSF:
                 self._pop,
                 self._time_step,
                 self._encoding,
-                self._env.action_space,
-                active_clfr_set=None)  # no point in deleting from [A]
+                self._env.action_space)
             self._prev_action_set = None
             self._prev_reward = None
             self._prev_obs = None
@@ -122,8 +120,7 @@ class XCSF:
                                            self._env.action_space,
                                            self._time_step, self._pred_strat)
             self._pop.add_new(clfr, op="covering")
-            # might also need to delete from [M]
-            deletion(self._pop, active_clfr_set=match_set)
+            deletion(self._pop)
             match_set.append(clfr)
         return match_set
 
@@ -167,12 +164,10 @@ class XCSF:
     def _gen_action_set(self, match_set, action):
         return [clfr for clfr in match_set if clfr.action == action]
 
-    def _try_run_ga(self, action_set, pop, time_step, encoding, action_space,
-                    active_clfr_set):
+    def _try_run_ga(self, action_set, pop, time_step, encoding, action_space):
         # GA only active on exploration episodes/"problems"
         if self._action_selection_mode == ActionSelectionModes.explore:
-            run_ga(action_set, pop, time_step, encoding, action_space,
-                   active_clfr_set)
+            run_ga(action_set, pop, time_step, encoding, action_space)
 
     def select_action(self, obs):
         """Action selection for outside testing - always exploit"""

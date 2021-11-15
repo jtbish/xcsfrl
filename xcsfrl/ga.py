@@ -7,29 +7,24 @@ from .deletion import deletion
 from .hyperparams import get_hyperparam as get_hp
 from .rng import get_rng
 from .subsumption import does_subsume
-from .util import calc_num_macros, calc_num_micros
+from .util import calc_num_micros
 
 _ERROR_CUTDOWN = 0.25
 _NICHE_MIN_ERROR_CUTDOWN = _ERROR_CUTDOWN
 _FITNESS_CUTDOWN = 0.1
 
 
-def run_ga(action_set, pop, time_step, encoding, action_space,
-           active_clfr_set):
-    as_is_empty = (calc_num_macros(action_set) == 0)
-    assert not as_is_empty
-
+def run_ga(action_set, pop, time_step, encoding, action_space):
     avg_time_stamp_in_as = sum(
         [clfr.time_stamp * clfr.numerosity
          for clfr in action_set]) / calc_num_micros(action_set)
-    should_apply_ga = ((time_step - avg_time_stamp_in_as) > get_hp("theta_ga"))
+    should_apply_ga = ((time_step - avg_time_stamp_in_as) >
+                       get_hp("theta_ga"))
     if should_apply_ga:
-        _run_ga(action_set, pop, time_step, encoding, action_space,
-                active_clfr_set)
+        _run_ga(action_set, pop, time_step, encoding, action_space)
 
 
-def _run_ga(action_set, pop, time_step, encoding, action_space,
-            active_clfr_set):
+def _run_ga(action_set, pop, time_step, encoding, action_space):
     for clfr in action_set:
         clfr.time_stamp = time_step
 
@@ -77,7 +72,7 @@ def _run_ga(action_set, pop, time_step, encoding, action_space,
                 _insert_in_pop(pop, child)
         else:
             _insert_in_pop(pop, child)
-        deletion(pop, active_clfr_set)
+        deletion(pop)
 
 
 def _tournament_selection(action_set):

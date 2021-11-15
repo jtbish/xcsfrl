@@ -4,20 +4,20 @@ from .rng import get_rng
 _MIN_NUM_MACROS = 1
 
 
-def deletion(pop, active_clfr_set):
+def deletion(pop):
     max_pop_size = get_hp("N")
     pop_size = pop.num_micros
     num_to_delete = max(0, (pop_size - max_pop_size))
     if num_to_delete > 0:
         for _ in range(num_to_delete):
-            _delete_single_microclfr(pop, active_clfr_set)
+            _delete_single_microclfr(pop)
         assert pop.num_macros >= _MIN_NUM_MACROS
         assert pop.num_micros <= max_pop_size
 
 
-def _delete_single_microclfr(pop, active_clfr_set):
+def _delete_single_microclfr(pop):
     avg_fitness_in_pop = sum([clfr.fitness for clfr in pop]) / pop.num_micros
-    vote_increase_threshold = get_hp("delta") * avg_fitness_in_pop
+    vote_increase_threshold = (get_hp("delta") * avg_fitness_in_pop)
     votes = [
         _deletion_vote(clfr, avg_fitness_in_pop, vote_increase_threshold)
         for clfr in pop
@@ -43,12 +43,6 @@ def _delete_single_microclfr(pop, active_clfr_set):
 
     if clfr_to_remove is not None:
         pop.remove(clfr_to_remove, op="deletion")
-        if active_clfr_set is not None:
-            try:
-                active_clfr_set.remove(clfr_to_remove)
-            except ValueError:
-                # not in the set, not a problem
-                pass
 
 
 def _deletion_vote(clfr, avg_fitness_in_pop, vote_increase_threshold):
