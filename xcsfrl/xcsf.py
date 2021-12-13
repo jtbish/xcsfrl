@@ -13,6 +13,7 @@ from .hyperparams import register_hyperparams
 from .param_update import update_action_set
 from .population import Population
 from .rng import seed_rng
+from .util import calc_num_micros
 
 
 class XCSF:
@@ -36,6 +37,7 @@ class XCSF:
         self._curr_obs = None
         self._time_step = 0
         self._episodes_trained = 0
+        self._num_ga_calls = 0
 
     @property
     def pop(self):
@@ -69,6 +71,23 @@ class XCSF:
             while not self._env.is_terminal():
                 self._run_step()
             self._episodes_trained += 1
+
+    def train_for_ga_calls(self, num_ga_calls):
+        # restart episode or resume where left off
+        # prime the current obs
+        if self._curr_obs is None:
+            assert self._env.is_terminal()
+            self._curr_obs = self._env.reset()
+            self._action_selection_mode = choose_action_selection_mode()
+
+        curr_num_ga_calls = self._num_ga_calls
+        target_num_ga_calls = (curr_num_ga_calls + num_ga_calls)
+        while (self._num_ga_calls < target_num_ga_calls):
+            self._run_step()
+            if self._env.is_terminal():
+                assert self._curr_obs is None
+                self._curr_obs = self._env.reset()
+                self._action_selection_mode = choose_action_selection_mode()
 
     def _run_step(self):
         obs = self._curr_obs
@@ -165,9 +184,16 @@ class XCSF:
         return [clfr for clfr in match_set if clfr.action == action]
 
     def _try_run_ga(self, action_set, pop, time_step, encoding, action_space):
-        # GA only active on exploration episodes/"problems"
+        # GA can only be active on exploration episodes/"problems"
         if self._action_selection_mode == ActionSelectionModes.explore:
-            run_ga(action_set, pop, time_step, encoding, action_space)
+            avg_time_stamp_in_as = sum(
+                [clfr.time_stamp * clfr.numerosity
+                 for clfr in action_set]) / calc_num_micros(action_set)
+            should_apply_ga = ((time_step - avg_time_stamp_in_as) >
+                               get_hp("theta_ga"))
+            if should_apply_ga:
+                run_ga(action_set, pop, time_step, encoding, action_space)
+                self._num_ga_calls += 1
 
     def select_action(self, obs):
         """Action selection for outside testing - always exploit"""
