@@ -104,22 +104,14 @@ class XCSF:
                 max(prediction_arr.values())
             update_action_set(self._prev_action_set, payoff, self._prev_obs,
                               self._pop, self._pred_strat, self._x_nought)
-            self._try_run_ga(
-                self._prev_action_set,
-                self._pop,
-                self._time_step,
-                self._encoding,
-                self._env.action_space)
+            self._try_run_ga(self._prev_action_set, self._pop, self._time_step,
+                             self._encoding, self._env.action_space)
         if is_terminal:
             payoff = reward
             update_action_set(action_set, payoff, obs, self._pop,
                               self._pred_strat, self._x_nought)
-            self._try_run_ga(
-                action_set,
-                self._pop,
-                self._time_step,
-                self._encoding,
-                self._env.action_space)
+            self._try_run_ga(action_set, self._pop, self._time_step,
+                             self._encoding, self._env.action_space)
             self._prev_action_set = None
             self._prev_reward = None
             self._prev_obs = None
@@ -173,8 +165,8 @@ class XCSF:
 
     def _select_action(self, prediction_arr):
         if self._action_selection_mode == ActionSelectionModes.explore:
-            return self._action_selection_strat(prediction_arr,
-                                                self._time_step)
+            return self._action_selection_strat(
+                prediction_arr, num_ga_calls=self._num_ga_calls)
         elif self._action_selection_mode == ActionSelectionModes.exploit:
             return greedy_action_selection(prediction_arr)
         else:

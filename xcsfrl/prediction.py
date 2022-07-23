@@ -38,30 +38,37 @@ class RecursiveLeastSquaresPrediction(PredictionStrategyABC):
         return np.reshape(aug_obs, (1, len(aug_obs)))  # row vector
 
     def update_prediction(self, clfr, payoff, aug_obs, proc_obs):
+        # optimal matrix parenthesisations pre-calced via DP
+        # lambda_rls inclusion as per Butz et al. '08 Function approximation
+        # with XCS: Hyperellipsoidal Conditions, Recursive Least Squares and
+        # Compaction
+        x = proc_obs
+        x_T = x.T
+        cov_mat = clfr.cov_mat
+        lambda_rls = get_hp("lambda_rls")
+
+        # update cov mat of classifier
+        beta_rls = lambda_rls + (x @ (cov_mat @ x_T))
+        clfr.cov_mat = (1 / lambda_rls) * (cov_mat - (1 / beta_rls) *
+                                           ((cov_mat @ x_T) @ (x @ cov_mat)))
+
+        # calc gain vec given updated cov mat
+        gain_vec = np.dot(clfr.cov_mat, x_T)
+        gain_vec = (gain_vec.T)[0]
+        assert gain_vec.shape == clfr.weight_vec.shape
+
+        # use gain vec to adjust weight vec
+        error = payoff - clfr.prediction(aug_obs)
+        clfr.weight_vec += (gain_vec * error)
+
+    def _try_reset_cov_mat(clfr):
+        """tau_rls reset strategy for clfr cov mats, currently not in use."""
         tau_rls = get_hp("tau_rls")
         cov_mat_resets_allowed = (tau_rls > 0)
         if cov_mat_resets_allowed:
             should_reset_cov_mat = (clfr.experience % tau_rls == 0)
             if should_reset_cov_mat:
                 clfr.reset_cov_mat()
-
-        # optimal matrix parenthesisations pre-calced via DP
-        # lambda_rls inclusion as per Butz et al. '08 Function approximation
-        # with XCS: Hyperellipsoidal Conditions, Recursive Least Squares and
-        # Compaction
-        x = proc_obs
-        lambda_rls = get_hp("lambda_rls")
-        beta_rls = lambda_rls + (x @ (clfr.cov_mat @ x.T))
-        clfr.cov_mat = (1 / lambda_rls) * (clfr.cov_mat - (1 / beta_rls) * (
-            (clfr.cov_mat @ x.T) @ (x @ clfr.cov_mat)))
-        gain_vec = np.dot(clfr.cov_mat, x.T)
-        gain_vec = gain_vec.T
-        assert gain_vec.shape == x.shape
-        gain_vec = gain_vec[0]
-        assert gain_vec.shape == clfr.weight_vec.shape
-
-        error = payoff - clfr.prediction(aug_obs)
-        clfr.weight_vec += (gain_vec * error)
 
 
 class NormalisedLeastMeanSquaresPrediction(PredictionStrategyABC):

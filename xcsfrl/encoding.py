@@ -14,6 +14,10 @@ class EncodingABC(metaclass=abc.ABCMeta):
     def __init__(self, obs_space):
         self._obs_space = obs_space
 
+    @property
+    def obs_space(self):
+        return self._obs_space
+
     @abc.abstractmethod
     def gen_covering_condition(self, obs):
         raise NotImplementedError
@@ -145,7 +149,7 @@ class RealUnorderedBoundEncoding(UnorderedBoundEncodingABC):
 
     def calc_condition_generality(self, cond_intervals):
         numer = sum([interval.span for interval in cond_intervals])
-        denom = sum([dim for dim in self._obs_space])
+        denom = sum([dim.span for dim in self._obs_space])
         generality = numer / denom
         # gen could be 0 if all intervals in numer collapse to single point
         assert self._GENERALITY_LB_INCL <= generality <= _GENERALITY_UB_INCL

@@ -31,6 +31,9 @@ class IntervalABC(metaclass=abc.ABCMeta):
         """Does this interval subsume other interval?"""
         return (self._lower <= other._lower and self._upper >= other._upper)
 
+    def __eq__(self, other):
+        return (self._lower == other._lower and self._upper == other._upper)
+
     def __str__(self):
         return f"[{self._lower}, {self._upper}]"
 
